@@ -1,0 +1,28 @@
+{
+  "name": "Move Go CRM",
+  "short_name": "Move Go",
+  "description": "Moving company management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FC",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Crew Portal",
+      "short_name": "Crew",
+      "description": "Задания для бригады",
+      "url": "/crew-app",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Новая заявка",
+      "short_name": "Заявка",
+      "url": "/estimate",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}
