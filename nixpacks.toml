@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build", "cp serve.json dist/serve.json"]
+
+[start]
+cmd = "npx serve dist -c serve.json -l ${PORT:-3000}"
