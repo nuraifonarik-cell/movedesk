@@ -163,7 +163,8 @@ export default function ContractPage() {
   const billHours   = startTime && endTime ? applyMinimum(rawHours) : FEES.min_hours
   const laborTotal  = rate * billHours
   const packTotal   = PACKING_ITEMS.reduce((s,i) => s+(packingQty[i.name]??0)*i.rate, 0)
-  const subtotal    = laborTotal + packTotal + travelFee
+  const heavyTotal  = heavyItems.reduce((s,i) => s+(parseFloat(i.price)||0), 0)
+  const subtotal    = laborTotal + packTotal + heavyTotal + travelFee
   const cashDisc    = payType==='cash'   ? subtotal*(FEES.cash_discount_pct/100) : 0
   const cardFee     = payType==='card'   ? subtotal*(FEES.card_fee_pct/100) : 0
   const squareFee   = payType==='square' ? subtotal*(FEES.square_fee_pct/100) : 0

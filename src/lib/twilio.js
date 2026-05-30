@@ -1,36 +1,12 @@
-// Twilio SMS helper
-// Sends SMS via Twilio API
-
-const ACCOUNT_SID = import.meta.env.VITE_TWILIO_ACCOUNT_SID
-const AUTH_TOKEN  = import.meta.env.VITE_TWILIO_AUTH_TOKEN
-const FROM_PHONE  = import.meta.env.VITE_TWILIO_PHONE
+import { supabase } from './supabase'
 
 export async function sendSMS(to, message) {
-  if (!ACCOUNT_SID || !AUTH_TOKEN || !FROM_PHONE) {
-    console.warn('Twilio not configured')
-    return
-  }
-  // Clean phone number - ensure it has + prefix
-  const toPhone = to.startsWith('+') ? to : '+1' + to.replace(/\D/g, '')
-
   try {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json`
-    const body = new URLSearchParams({
-      To:   toPhone,
-      From: FROM_PHONE,
-      Body: message,
+    const { data, error } = await supabase.functions.invoke('send-sms', {
+      body: { to, message },
     })
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${ACCOUNT_SID}:${AUTH_TOKEN}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body,
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      console.error('Twilio error:', data)
+    if (error) {
+      console.error('SMS error:', error)
       return null
     }
     console.log('SMS sent:', data.sid)

@@ -16,6 +16,7 @@ import ContractPage        from './pages/ContractPage'
 import ContractPrintPage   from './pages/ContractPrintPage'
 import ContractViewPage    from './pages/ContractViewPage'
 import CrewAppPage         from './pages/CrewAppPage'
+import BookingPage         from './pages/BookingPage'
 
 // Check if logged-in user is a crew member (not a manager)
 function useUserRole() {
@@ -81,6 +82,7 @@ function AppRoutes() {
       <Route path="/customers"                   element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
       <Route path="/crew"                        element={<ProtectedRoute><CrewPage /></ProtectedRoute>} />
       <Route path="/crew-app"                    element={<CrewAppPage />} />
+      <Route path="/booking"                     element={<BookingPage />} />
       <Route path="*"                            element={<Navigate to="/" replace />} />
     </Routes>
   )

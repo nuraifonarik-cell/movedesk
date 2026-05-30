@@ -1,29 +1,18 @@
-// SendGrid email helper
-const API_KEY  = import.meta.env.VITE_SENDGRID_API_KEY
-const FROM     = import.meta.env.VITE_SENDGRID_FROM || 'info@movegowa.com'
-const FROM_NAME = 'Move Go Moving'
+// SendGrid email helper — отправка через Supabase Edge Function
+import { supabase } from './supabase'
 
 export async function sendEmail(to, subject, html) {
-  if (!API_KEY) { console.warn('SendGrid not configured'); return }
   if (!to) { console.warn('No email address'); return }
   try {
-    const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: to }] }],
-        from: { email: FROM, name: FROM_NAME },
-        subject,
-        content: [{ type: 'text/html', value: html }],
-      }),
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to, subject, html },
     })
-    if (res.ok) console.log('Email sent to:', to)
-    else console.error('SendGrid error:', await res.text())
+    if (error) { console.error('Email error:', error); return null }
+    console.log('Email sent to:', to)
+    return data
   } catch (e) {
     console.error('Email failed:', e)
+    return null
   }
 }
 

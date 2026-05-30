@@ -147,9 +147,15 @@ export default function JobDetailPage() {
       movers_count: j.movers_count??3, notes: j.notes??'',
     })
     if (j.move_date) {
+      const rangeStart = new Date(j.move_date)
+      rangeStart.setDate(rangeStart.getDate() - 1)
+      const rangeEnd = new Date(j.move_date)
+      rangeEnd.setDate(rangeEnd.getDate() + 1)
       const { data: asgn } = await supabase
         .from('job_assignments')
         .select('crew_member_id, job:jobs(id,status,move_date)')
+        .gte('job.move_date', rangeStart.toISOString().split('T')[0])
+        .lte('job.move_date', rangeEnd.toISOString().split('T')[0])
       const map = {}
       asgn?.forEach(a => {
         if (a.job?.id !== id && a.job?.move_date === j.move_date &&
