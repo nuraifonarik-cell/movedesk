@@ -134,16 +134,26 @@ export default function EstimatePage() {
         total_price: price.total,
         notes: noteParts.join('\n') || null,
       })
+      const { format } = await import('date-fns')
+      const moveDateFormatted = form.move_date ? format(new Date(form.move_date), 'MMMM d, yyyy') : form.move_date
+      const notifData = {
+        customerName: form.full_name,
+        moveDate: moveDateFormatted,
+        fromAddress: form.from_address,
+        toAddress: form.to_address,
+        moversCount: form.movers_count,
+        blNumber: job.bl_number ?? `BL-${job.id?.slice(0,6).toUpperCase()}`,
+      }
+
       // Send confirmation SMS
       if (form.phone) {
-        const { format } = await import('date-fns')
-        sendSMS(form.phone, smsJobConfirmation({
-          customerName: form.full_name,
-          moveDate: form.move_date ? format(new Date(form.move_date), 'MMMM d, yyyy') : form.move_date,
-          fromAddress: form.from_address,
-          toAddress: form.to_address,
-          moversCount: form.movers_count,
-        })).catch(console.error)  // non-blocking
+        sendSMS(form.phone, smsJobConfirmation(notifData)).catch(console.error)
+      }
+
+      // Send confirmation email
+      if (form.email.trim()) {
+        const { subject, html } = emailJobConfirmation(notifData)
+        sendEmail(form.email.trim(), subject, html).catch(console.error)
       }
 
       navigate(`/jobs/${job.id}`)
