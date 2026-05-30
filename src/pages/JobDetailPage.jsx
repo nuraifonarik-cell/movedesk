@@ -171,15 +171,15 @@ export default function JobDetailPage() {
     loadJob().catch(console.error).finally(() => setLoading(false))
   }, [loadJob])
 
-  // ── Core crew operation — DB first, then reload ───────────────────────────
+  // ── Core crew operation — DB first, then optimistic state update ─────────
   const doCrewOp = useCallback(async (fn) => {
-    if (opLock.current) return   // hard lock — ref never goes stale
+    if (opLock.current) return
     opLock.current = true
     setOpPending(true)
     setError('')
     try {
-      await fn()                 // DB operation
-      await loadJob()            // reload fresh state from DB
+      const updates = await fn()
+      if (updates) setJob(j => ({ ...j, ...updates }))
     } catch (e) {
       console.error('crew op error:', e)
       setError('Failed: ' + (e?.message ?? 'Unknown error'))
@@ -187,53 +187,94 @@ export default function JobDetailPage() {
       opLock.current = false
       setOpPending(false)
     }
-  }, [loadJob])
+  }, [])
 
   // ── Assign single-role (foreman / driver) ─────────────────────────────────
   const assignSingle = useCallback((memberId, isSelected, roleType) => {
+    // Warning: busy on this day
+    if (!isSelected && busyMap[memberId]) {
+      if (!confirm(`⚠️ This person already has another job on ${job?.move_date}.\nAssign anyway?`)) return
+    }
+
     doCrewOp(async () => {
-      const assignments = job?.assignments ?? []
+      let assignments = [...(job?.assignments ?? [])]
+      let newStatus = job?.status
 
       if (isSelected) {
-        // Remove
         const row = assignments.find(a => a.crew_member_id === memberId)
-        if (row) await supabase.from('job_assignments').delete().eq('id', row.id)
-        // If was foreman → revert to new
-        if (roleType === 'foreman' && job?.status === 'scheduled')
+        if (row) {
+          await supabase.from('job_assignments').delete().eq('id', row.id)
+          assignments = assignments.filter(a => a.id !== row.id)
+        }
+        if (roleType === 'foreman' && newStatus === 'scheduled') {
           await supabase.from('jobs').update({ status:'new' }).eq('id', id)
+          newStatus = 'new'
+        }
       } else {
         // Remove existing of same role first
         const sameRole = assignments.filter(a => {
           const m = crew.find(c => c.id === a.crew_member_id)
           return (m?.role_type ?? m?.role) === roleType ||
-                 (roleType === 'foreman' && (m?.role === 'lead'))
+                 (roleType === 'foreman' && m?.role === 'lead')
         })
-        for (const row of sameRole)
+        for (const row of sameRole) {
           await supabase.from('job_assignments').delete().eq('id', row.id)
-
-        // Insert new
-        await supabase.from('job_assignments')
+          assignments = assignments.filter(a => a.id !== row.id)
+        }
+        const { data: newRow } = await supabase.from('job_assignments')
           .insert({ job_id: id, crew_member_id: memberId })
+          .select('id, crew_member_id').single()
+        if (newRow) assignments = [...assignments, newRow]
 
-        // If foreman assigned → schedule
-        if (roleType === 'foreman' && job?.status === 'new')
+        if (roleType === 'foreman' && newStatus === 'new') {
           await supabase.from('jobs').update({ status:'scheduled' }).eq('id', id)
+          newStatus = 'scheduled'
+        }
       }
+
+      return { assignments, status: newStatus }
     })
-  }, [doCrewOp, job, crew, id])
+  }, [doCrewOp, job, crew, id, busyMap])
 
   // ── Toggle helper ─────────────────────────────────────────────────────────
   const toggleHelper = useCallback((memberId, isChecked) => {
-    doCrewOp(async () => {
-      if (isChecked) {
-        const row = job?.assignments?.find(a => a.crew_member_id === memberId)
-        if (row) await supabase.from('job_assignments').delete().eq('id', row.id)
-      } else {
-        await supabase.from('job_assignments')
-          .insert({ job_id: id, crew_member_id: memberId })
+    // Warning: busy on this day
+    if (!isChecked && busyMap[memberId]) {
+      if (!confirm(`⚠️ This helper already has another job on ${job?.move_date}.\nAssign anyway?`)) return
+    }
+
+    // Warning: exceeding movers_count
+    if (!isChecked) {
+      const getRoleKey = m => m.role_type ?? (m.role==='lead'?'foreman':m.role==='driver'?'driver':'helper')
+      const assignedNow = (job?.assignments ?? []).map(a => a.crew_member_id)
+      const moverCount = crew.filter(m => {
+        const role = getRoleKey(m)
+        return (role === 'foreman' || role === 'helper') && assignedNow.includes(m.id)
+      }).length
+      if (moverCount >= (job?.movers_count ?? 0)) {
+        if (!confirm(`Job is set for ${job?.movers_count} movers. You already have ${moverCount} assigned.\nAdd anyway?`)) return
       }
+    }
+
+    doCrewOp(async () => {
+      let assignments = [...(job?.assignments ?? [])]
+
+      if (isChecked) {
+        const row = assignments.find(a => a.crew_member_id === memberId)
+        if (row) {
+          await supabase.from('job_assignments').delete().eq('id', row.id)
+          assignments = assignments.filter(a => a.id !== row.id)
+        }
+      } else {
+        const { data: newRow } = await supabase.from('job_assignments')
+          .insert({ job_id: id, crew_member_id: memberId })
+          .select('id, crew_member_id').single()
+        if (newRow) assignments = [...assignments, newRow]
+      }
+
+      return { assignments }
     })
-  }, [doCrewOp, job, id])
+  }, [doCrewOp, job, crew, id, busyMap])
 
   // ── Notes ─────────────────────────────────────────────────────────────────
   const saveNotes = async () => {
