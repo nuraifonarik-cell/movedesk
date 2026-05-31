@@ -140,7 +140,8 @@ export function generateContractPDF({ job, sigs = {} }) {
   doc.text('DECLARATION OF VALUE', L, y); y += 10
   Object.entries(INSURANCE).forEach(([key, ins]) => {
     const checked = job.insurance_option === key
-    doc.setFillColor(checked ? ...BLUE : ...WHITE)
+    const fillColor = checked ? BLUE : WHITE
+    doc.setFillColor(...fillColor)
     doc.setDrawColor(...DARK)
     doc.rect(L, y - 7, 8, 8, checked ? 'F' : 'S')
     if (checked) { doc.setTextColor(...WHITE); doc.setFontSize(7); doc.text('✓', L + 1.5, y - 0.5) }
