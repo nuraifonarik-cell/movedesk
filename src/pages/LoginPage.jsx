@@ -2,20 +2,16 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function LoginPage() {
-  const { signIn, signUp } = useAuth()
-  const [mode, setMode]       = useState('login')
+  const { signIn } = useAuth()
   const [email, setEmail]     = useState('')
   const [password, setPass]   = useState('')
-  const [name, setName]       = useState('')
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
   const handle = async (e) => {
     e.preventDefault(); setError(''); setLoading(true)
     try {
-      const { error: err } = mode === 'login'
-        ? await signIn(email, password)
-        : await signUp(email, password, name)
+      const { error: err } = await signIn(email, password)
       if (err) setError(err.message)
     } finally { setLoading(false) }
   }
@@ -46,12 +42,6 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handle} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {mode === 'register' && (
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>Full Name</label>
-                <input type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Mike Rodriguez" style={inp} />
-              </div>
-            )}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>Email</label>
               <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@movecompany.com" style={inp} />
@@ -64,16 +54,12 @@ export default function LoginPage() {
             {error && <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#FCA5A5', fontSize: 13, padding: '10px 14px', borderRadius: 10 }}>{error}</div>}
 
             <button type="submit" disabled={loading} style={{ padding: '13px', borderRadius: 12, border: 'none', background: loading ? '#374151' : 'linear-gradient(135deg,#1D4ED8,#6366F1)', color: 'white', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 4, boxShadow: '0 4px 14px rgba(99,102,241,0.4)' }}>
-              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In →' : 'Create Account →'}
+              {loading ? 'Please wait...' : 'Sign In →'}
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 20 }}>
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <button onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError('') }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#818CF8', fontWeight: 600, fontSize: 13 }}>
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
+          <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.25)', marginTop: 20 }}>
+            Access is by invitation only. Contact your administrator.
           </p>
         </div>
       </div>
