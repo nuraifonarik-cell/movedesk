@@ -254,6 +254,9 @@ export async function contractPdfBase64({ job, sigs }) {
   // Wait for images (logo + signatures) to load
   await new Promise(r => setTimeout(r, 300))
 
+  // Limit to actual content height — prevents blank space at the bottom
+  const contentHeight = container.scrollHeight
+
   const canvas = await html2canvas(container, {
     scale: 1.5,
     useCORS: true,
@@ -261,28 +264,26 @@ export async function contractPdfBase64({ job, sigs }) {
     logging: false,
     backgroundColor: '#ffffff',
     width: 830,
+    height: contentHeight,
   })
 
   document.body.removeChild(container)
 
-  // Split into pages with margins
-  const doc    = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' })
-  const pageW  = doc.internal.pageSize.getWidth()
-  const pageH  = doc.internal.pageSize.getHeight()
-  const margin = 28
-  const imgW   = pageW - margin * 2
-  const imgH   = (canvas.height * imgW) / canvas.width
-  const imgData = canvas.toDataURL('image/jpeg', 0.92)
+  // Split into pages — margin applied on all sides every page
+  const doc      = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' })
+  const pageW    = doc.internal.pageSize.getWidth()
+  const pageH    = doc.internal.pageSize.getHeight()
+  const margin   = 28
+  const imgW     = pageW - margin * 2
+  const imgH     = (canvas.height * imgW) / canvas.width
+  const imgData  = canvas.toDataURL('image/jpeg', 0.92)
+  const sliceH   = pageH - margin * 2   // usable content height per page
 
-  doc.addImage(imgData, 'JPEG', margin, margin, imgW, imgH)
-
-  let remaining = imgH + margin - pageH
-  let offset = margin - pageH
-  while (remaining > 0) {
-    doc.addPage()
-    doc.addImage(imgData, 'JPEG', margin, offset, imgW, imgH)
-    offset -= pageH
-    remaining -= pageH
+  let page = 0
+  while (page * sliceH < imgH) {
+    if (page > 0) doc.addPage()
+    doc.addImage(imgData, 'JPEG', margin, margin - page * sliceH, imgW, imgH)
+    page++
   }
 
   return doc.output('datauristring').split(',')[1]
