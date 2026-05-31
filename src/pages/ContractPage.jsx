@@ -107,6 +107,8 @@ export default function ContractPage() {
   const [step, setStep]       = useState(0)
   const [saving, setSaving]   = useState(false)
 
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, [step])
+
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime]     = useState('')
   const [breakMin, setBreakMin]   = useState(0)
