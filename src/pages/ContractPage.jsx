@@ -269,14 +269,16 @@ export default function ContractPage() {
           travel_fee_actual: travelFee,
           actual_total: totalCost,
         }
-        const pdfBase64 = await contractPdfBase64({ job: jobWithTimes, sigs })
-        sendEmail(
-          job.customer.email, subject, html,
-          { content: pdfBase64, filename: `MoveGo_Contract_${blNumber}.pdf` }
-        ).catch(console.error)
+        // Generate PDF and send in background — don't block the UI
+        contractPdfBase64({ job: jobWithTimes, sigs })
+          .then(pdfBase64 => sendEmail(
+            job.customer.email, subject, html,
+            { content: pdfBase64, filename: `MoveGo_Contract_${blNumber}.pdf` }
+          ))
+          .catch(console.error)
       }
 
-      setStep(4)
+      setStep(4)  // форман сразу видит "Job Complete!" пока PDF генерируется в фоне
     } catch (e) {
       console.error('submit error:', e)
     } finally {
