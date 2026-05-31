@@ -269,7 +269,7 @@ export default function ContractPage() {
           travel_fee_actual: travelFee,
           actual_total: totalCost,
         }
-        const pdfBase64 = contractPdfBase64({ job: jobWithTimes, sigs })
+        const pdfBase64 = await contractPdfBase64({ job: jobWithTimes, sigs })
         sendEmail(
           job.customer.email, subject, html,
           { content: pdfBase64, filename: `MoveGo_Contract_${blNumber}.pdf` }
