@@ -28,13 +28,12 @@ function HelperPicker({ members, assignedIds, busyMap, disabled, onToggle }) {
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
         <HardHat size={13} color="#059669"/>
         <span style={{fontSize:12,fontWeight:700,color:'#059669'}}>Helpers</span>
+        <span style={{fontSize:10,color:'#94A3B8'}}>({members.length})</span>
         {count > 0 && <span style={{fontSize:10,color:'#059669',background:'#D1FAE5',padding:'1px 8px',borderRadius:20,fontWeight:700}}>{count} selected</span>}
       </div>
-      {members.length > 5 && (
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search helpers..."
-          style={{width:'100%',border:'1px solid #E2E8F0',borderRadius:8,padding:'7px 12px',fontSize:13,outline:'none',fontFamily:'inherit',marginBottom:6,boxSizing:'border-box'}}/>
-      )}
-      <div style={{border:'1px solid #E2E8F0',borderRadius:10,overflow:'hidden',maxHeight:220,overflowY:'auto'}}>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or phone..."
+        style={{width:'100%',border:'1px solid #E2E8F0',borderRadius:8,padding:'7px 12px',fontSize:13,outline:'none',fontFamily:'inherit',marginBottom:6,boxSizing:'border-box'}}/>
+      <div style={{border:'1px solid #E2E8F0',borderRadius:10,overflow:'hidden',maxHeight:260,overflowY:'auto'}}>
         {filtered.length === 0
           ? <div style={{padding:14,textAlign:'center',color:'#94A3B8',fontSize:13}}>No helpers found</div>
           : filtered.map((m,i) => {
@@ -67,14 +66,24 @@ function HelperPicker({ members, assignedIds, busyMap, disabled, onToggle }) {
 
 // ── Single-select crew card (foreman / driver) ───────────────────────────────
 function CrewPicker({ members, assignedId, busyMap, disabled, color, bg, onSelect, label, icon: Icon }) {
+  const [search, setSearch] = useState('')
+  const filtered = members.filter(m =>
+    !search || m.full_name?.toLowerCase().includes(search.toLowerCase()) || m.phone?.includes(search)
+  )
   return (
     <div>
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}>
         <Icon size={13} color={color}/>
         <span style={{fontSize:12,fontWeight:700,color}}>{label}</span>
+        <span style={{fontSize:10,color:'#94A3B8'}}>({members.length})</span>
+        {assignedId && <span style={{fontSize:10,color,background:bg,padding:'1px 8px',borderRadius:20,fontWeight:700}}>1 selected</span>}
       </div>
-      <div style={{display:'flex',flexDirection:'column',gap:6}}>
-        {members.map(m => {
+      {members.length > 5 && (
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${label.toLowerCase()}...`}
+          style={{width:'100%',border:'1px solid #E2E8F0',borderRadius:8,padding:'7px 12px',fontSize:13,outline:'none',fontFamily:'inherit',marginBottom:6,boxSizing:'border-box'}}/>
+      )}
+      <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:240,overflowY:'auto'}}>
+        {filtered.map(m => {
           const selected = m.id === assignedId
           const busy = busyMap[m.id] && !selected
           return (
@@ -89,7 +98,7 @@ function CrewPicker({ members, assignedId, busyMap, disabled, color, bg, onSelec
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 opacity: disabled ? 0.55 : 1,
                 textAlign:'left', width:'100%',
-                transition: 'opacity 0.15s',
+                transition: 'opacity 0.15s', flexShrink: 0,
               }}>
               <div style={{width:28,height:28,borderRadius:'50%',background:selected?color:'#E2E8F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:selected?'white':'#64748B',flexShrink:0}}>
                 {m.full_name?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)}
@@ -103,6 +112,9 @@ function CrewPicker({ members, assignedId, busyMap, disabled, color, bg, onSelec
             </button>
           )
         })}
+        {filtered.length === 0 && (
+          <div style={{padding:14,textAlign:'center',color:'#94A3B8',fontSize:13}}>Not found</div>
+        )}
       </div>
       {assignedId && busyMap[assignedId] && (
         <div style={{fontSize:11,color:'#D97706',marginTop:4}}>⚠️ Has another job this day</div>
