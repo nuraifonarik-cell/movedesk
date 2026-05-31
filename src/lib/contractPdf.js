@@ -212,7 +212,8 @@ function buildContractHTML(job, sigs) {
     </div>
   </div>
 
-  <!-- Signatures -->
+  <!-- Signatures — page break marker -->
+  <div data-pagebreak="true"></div>
   <div style="border:1px solid #E2E8F0;border-radius:6px;padding:12px;margin-bottom:10px;">
     <div style="font-size:9px;color:#374151;margin-bottom:10px;"><strong>Customer Release:</strong> I have read and understand this contract, and release my household goods to the carrier subject to the terms and conditions of this contract.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -254,36 +255,63 @@ export async function contractPdfBase64({ job, sigs }) {
   // Wait for images (logo + signatures) to load
   await new Promise(r => setTimeout(r, 300))
 
-  // Limit to actual content height — prevents blank space at the bottom
-  const contentHeight = container.scrollHeight
+  // Find page break marker position (the Signatures section start)
+  const marker    = container.querySelector('[data-pagebreak]')
+  const breakY    = marker ? marker.offsetTop : null
+  const totalH    = container.scrollHeight
 
+  const scale = 1.5
   const canvas = await html2canvas(container, {
-    scale: 1.5,
+    scale,
     useCORS: true,
     allowTaint: true,
     logging: false,
     backgroundColor: '#ffffff',
     width: 830,
-    height: contentHeight,
+    height: totalH,
   })
 
   document.body.removeChild(container)
 
-  // Split into pages — margin applied on all sides every page
-  const doc      = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' })
-  const pageW    = doc.internal.pageSize.getWidth()
-  const pageH    = doc.internal.pageSize.getHeight()
-  const margin   = 28
-  const imgW     = pageW - margin * 2
-  const imgH     = (canvas.height * imgW) / canvas.width
-  const imgData  = canvas.toDataURL('image/jpeg', 0.92)
-  const sliceH   = pageH - margin * 2   // usable content height per page
+  const doc    = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' })
+  const pageW  = doc.internal.pageSize.getWidth()
+  const pageH  = doc.internal.pageSize.getHeight()
+  const margin = 28
+  const imgW   = pageW - margin * 2
+  const scale2 = imgW / canvas.width   // pt per canvas pixel
 
-  let page = 0
-  while (page * sliceH < imgH) {
-    if (page > 0) doc.addPage()
-    doc.addImage(imgData, 'JPEG', margin, margin - page * sliceH, imgW, imgH)
-    page++
+  // Helper: draw a horizontal slice of the canvas onto the current page
+  const drawSlice = (startPx, endPx) => {
+    const sliceCanvas = document.createElement('canvas')
+    sliceCanvas.width  = canvas.width
+    sliceCanvas.height = endPx - startPx
+    sliceCanvas.getContext('2d').drawImage(
+      canvas, 0, startPx, canvas.width, endPx - startPx,
+      0, 0, canvas.width, endPx - startPx
+    )
+    const sliceH = (endPx - startPx) * scale2
+    doc.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, imgW, sliceH)
+  }
+
+  if (breakY && breakY > 50) {
+    // Page 1: from top to the page-break marker
+    const page1EndPx = Math.floor(breakY * scale)
+    drawSlice(0, page1EndPx)
+
+    // Page 2: from marker to end
+    doc.addPage()
+    const page2EndPx = canvas.height
+    drawSlice(page1EndPx, page2EndPx)
+  } else {
+    // No marker found — fall back to automatic split by fixed height
+    const imgH  = canvas.height * scale2
+    const sliceH = pageH - margin * 2
+    let page = 0
+    while (page * sliceH < imgH) {
+      if (page > 0) doc.addPage()
+      doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin - page * sliceH, imgW, imgH)
+      page++
+    }
   }
 
   return doc.output('datauristring').split(',')[1]

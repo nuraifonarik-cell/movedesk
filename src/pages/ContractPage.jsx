@@ -557,26 +557,40 @@ export default function ContractPage() {
 
           <SignaturePad
             title="Customer Release — Job Complete"
-            subtitle="I have inspected my goods and premises. No damages except as noted. The job is complete."
+            subtitle="I have read and understand this contract, and release my household goods to the carrier."
             existing={sigs.customer_release}
             onSave={d => saveSig('customer_release', d)}
           />
 
           <SignaturePad
-            title="Carrier Signature — Job Complete"
-            subtitle="Foreman confirms the job is complete and all items delivered"
+            title="Carrier Representative Signature"
+            subtitle="Carrier confirms delivery and job completion"
             existing={sigs.carrier_release}
             onSave={d => saveSig('carrier_release', d)}
           />
 
+          <SignaturePad
+            title="Customer Signature — Inspection Complete"
+            subtitle="I have inspected my goods and premises. No damages except as noted. The truck is empty and the job is complete."
+            existing={sigs.job_complete_customer}
+            onSave={d => saveSig('job_complete_customer', d)}
+          />
+
+          <SignaturePad
+            title="Carrier Signature — Inspection Complete"
+            subtitle="Carrier confirms inspection complete and truck is empty"
+            existing={sigs.job_complete_carrier}
+            onSave={d => saveSig('job_complete_carrier', d)}
+          />
+
           <button onClick={handleSubmit}
-            disabled={saving || !endTime || !sigs.end_initials || !sigs.customer_release || !sigs.carrier_release}
-            style={S(saving||!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release ? '#CBD5E1' : '#059669')}>
+            disabled={saving || !endTime || !sigs.end_initials || !sigs.customer_release || !sigs.carrier_release || !sigs.job_complete_customer || !sigs.job_complete_carrier}
+            style={S(saving||!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release||!sigs.job_complete_customer||!sigs.job_complete_carrier ? '#CBD5E1' : '#059669')}>
             {saving ? 'Saving...' : '✓ Submit & Complete Job'}
           </button>
-          {(!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release) && (
+          {(!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release||!sigs.job_complete_customer||!sigs.job_complete_carrier) && (
             <div style={{textAlign:'center', fontSize:12, color:'#94A3B8', marginTop:8}}>
-              Enter end time and collect all signatures to complete
+              Enter end time and collect all 5 signatures to complete
             </div>
           )}
         </>}
