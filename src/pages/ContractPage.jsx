@@ -5,7 +5,8 @@ import { FEES, PACKING_ITEMS, getRate, calcHours, applyMinimum } from '../lib/co
 import { format } from 'date-fns'
 import { CheckCircle2, ChevronRight, Clock, MapPin, User, DollarSign } from 'lucide-react'
 import { sendSMS, smsJobComplete } from '../lib/twilio'
-import { sendEmail, emailJobComplete } from '../lib/sendgrid'
+import { sendEmail, emailJobComplete, emailContractComplete } from '../lib/sendgrid'
+import { contractPdfBase64 } from '../lib/contractPdf'
 
 // ── Signature Pad ──────────────────────────────────────────────────────────
 function SignaturePad({ title, subtitle, onSave, existing }) {
@@ -226,18 +227,47 @@ export default function ContractPage() {
     setSaving(true)
     try {
       await saveToDb({ status:'completed' })
-      // Send completion notifications (non-blocking)
-      const completionData = {
-        customerName: job?.customer?.full_name ?? 'Customer',
-        total: (totalCost||0).toFixed(2),
-        balance: (balanceDue||0).toFixed(2),
-        blNumber: job?.bl_number ?? `BL-${id?.slice(0,6).toUpperCase()}`,
+
+      const blNumber = job?.bl_number ?? `BL-${id?.slice(0,6).toUpperCase()}`
+      const customerName = job?.customer?.full_name ?? 'Customer'
+      const moveDate = job?.move_date
+        ? new Date(job.move_date).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })
+        : ''
+
+      // Send SMS
+      if (job?.customer?.phone) {
+        sendSMS(job.customer.phone, smsJobComplete({
+          customerName, blNumber,
+          total: (totalCost||0).toFixed(2),
+          balance: (balanceDue||0).toFixed(2),
+        })).catch(console.error)
       }
-      if (job?.customer?.phone) sendSMS(job.customer.phone, smsJobComplete(completionData)).catch(console.error)
+
+      // Send contract email with PDF attachment
       if (job?.customer?.email) {
-        const { subject, html } = emailJobComplete(completionData)
-        sendEmail(job.customer.email, subject, html).catch(console.error)
+        const contractData = {
+          customerName, blNumber, moveDate,
+          fromAddress: job.from_address ?? '',
+          toAddress: job.to_address ?? '',
+          moversCount: job.movers_count ?? 2,
+          billHours, rate, payType,
+          laborTotal, packTotal, heavyTotal,
+          travelFee, deposit,
+          totalCost, balanceDue,
+        }
+        const { subject, html } = emailContractComplete(contractData)
+        const pdfBase64 = contractPdfBase64({
+          job, startTime, endTime, breakMin,
+          billHours, rate, laborTotal, packTotal, heavyTotal,
+          travelFee, deposit, totalCost, balanceDue,
+          payType, packingQty, heavyItems,
+        })
+        sendEmail(
+          job.customer.email, subject, html,
+          { content: pdfBase64, filename: `MoveGo_Contract_${blNumber}.pdf` }
+        ).catch(console.error)
       }
+
       setStep(4)
     } catch (e) {
       console.error('submit error:', e)

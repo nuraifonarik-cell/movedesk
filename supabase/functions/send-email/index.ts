@@ -33,8 +33,11 @@ serve(async (req) => {
 
   // Parse request body
   let to: string, subject: string, html: string
+  let attachment: { content: string, filename: string } | null = null
   try {
-    ;({ to, subject, html } = await req.json())
+    const body = await req.json()
+    to = body.to; subject = body.subject; html = body.html
+    attachment = body.attachment ?? null
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -68,6 +71,14 @@ serve(async (req) => {
       from: { email: FROM, name: FROM_NAME },
       subject,
       content: [{ type: 'text/html', value: html }],
+      ...(attachment ? {
+        attachments: [{
+          content: attachment.content,
+          type: 'application/pdf',
+          filename: attachment.filename,
+          disposition: 'attachment',
+        }]
+      } : {}),
     }),
   })
 

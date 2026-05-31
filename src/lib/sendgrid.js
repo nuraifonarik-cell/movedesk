@@ -1,12 +1,12 @@
 // SendGrid email helper — отправка через Supabase Edge Function
 import { supabase } from './supabase'
 
-export async function sendEmail(to, subject, html) {
+export async function sendEmail(to, subject, html, attachment = null) {
   if (!to) { console.warn('No email address'); return }
   try {
-    const { data, error } = await supabase.functions.invoke('send-email', {
-      body: { to, subject, html },
-    })
+    const body = { to, subject, html }
+    if (attachment) body.attachment = attachment
+    const { data, error } = await supabase.functions.invoke('send-email', { body })
     if (error) { console.error('Email error:', error); return null }
     console.log('Email sent to:', to)
     return data
@@ -188,6 +188,91 @@ export function emailJobComplete({ customerName, total, balance, blNumber }) {
 
         <tr><td style="background:#F8FAFF;padding:20px 32px;text-align:center;border-top:1px solid #E2E8F0;">
           <p style="font-size:12px;color:#94A3B8;margin:0;">Move Go Moving & Junk Removal · Seattle, WA<br>(206) 567-1499 · info@movegowa.com</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+  }
+}
+
+export function emailContractComplete({ customerName, blNumber, moveDate, fromAddress, toAddress,
+  moversCount, billHours, rate, payType, laborTotal, packTotal, heavyTotal,
+  travelFee, deposit, totalCost, balanceDue }) {
+  const balanceColor = parseFloat(balanceDue) > 0 ? '#DC2626' : '#059669'
+  const PTYPE = { cash: 'Cash (5% discount applied)', card: 'Credit/Debit Card', square: 'Square' }
+  const rows = [
+    [`⏱ Labor — ${moversCount} movers × ${parseFloat(billHours).toFixed(2)} hrs × $${rate}/hr`, `$${parseFloat(laborTotal).toFixed(2)}`],
+    ['🚚 Travel Fee', `$${parseFloat(travelFee).toFixed(2)}`],
+    ...(parseFloat(packTotal) > 0 ? [['📦 Packing Materials', `$${parseFloat(packTotal).toFixed(2)}`]] : []),
+    ...(parseFloat(heavyTotal) > 0 ? [['🏋 Heavy Items', `$${parseFloat(heavyTotal).toFixed(2)}`]] : []),
+    ...(parseFloat(deposit) > 0 ? [['✅ Deposit Paid', `-$${parseFloat(deposit).toFixed(2)}`]] : []),
+  ]
+  return {
+    subject: `📄 Your Move Contract — ${blNumber} | Move Go`,
+    html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#F1F5F9;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:100%;">
+
+        <tr><td style="background:#0F172A;padding:28px 32px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:white;letter-spacing:0.05em;">➤ MOVE GO</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px;">Contract & Final Bill</div>
+        </td></tr>
+
+        <tr><td style="padding:32px;">
+          <h1 style="font-size:22px;font-weight:800;color:#0F172A;margin:0 0 4px;">Your contract is ready 📄</h1>
+          <p style="font-size:14px;color:#64748B;margin:0 0 24px;">Hi ${customerName}, please find your signed contract attached. Here is a summary:</p>
+
+          <!-- Move info -->
+          <div style="background:#F8FAFF;border-radius:12px;padding:20px;margin-bottom:20px;">
+            ${tableRows([
+              ['📋 B/L Number', blNumber],
+              ['📅 Move Date', moveDate],
+              ['📍 From', fromAddress],
+              ['🏁 To', toAddress],
+              ['💳 Payment', PTYPE[payType] ?? payType],
+            ])}
+          </div>
+
+          <!-- Bill -->
+          <div style="background:#F0FDF4;border-radius:12px;padding:20px;margin-bottom:20px;border:1px solid #BBF7D0;">
+            <div style="font-size:12px;font-weight:700;color:#065F46;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;">Final Bill</div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+              ${rows.map(([label, value]) => `
+                <tr>
+                  <td style="padding:8px 0;font-size:13px;color:#374151;border-bottom:1px solid #D1FAE5;width:65%;">${label}</td>
+                  <td style="padding:8px 0;font-size:13px;font-weight:600;color:#0F172A;border-bottom:1px solid #D1FAE5;text-align:right;">${value}</td>
+                </tr>
+              `).join('')}
+              <tr>
+                <td style="padding:12px 0;font-size:15px;font-weight:800;color:#0F172A;">Total Charged</td>
+                <td style="padding:12px 0;font-size:18px;font-weight:900;color:#1D4ED8;text-align:right;">$${parseFloat(totalCost).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-size:14px;font-weight:700;color:#374151;">Balance Due</td>
+                <td style="padding:8px 0;font-size:16px;font-weight:800;color:${balanceColor};text-align:right;">$${parseFloat(balanceDue).toFixed(2)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size:12px;color:#94A3B8;margin:0 0 20px;">
+            ✓ This contract was digitally signed. The PDF copy is attached to this email.
+          </p>
+
+          <div style="background:#FFF7ED;border-radius:12px;padding:16px;text-align:center;">
+            <p style="font-size:14px;font-weight:600;color:#92400E;margin:0 0 10px;">⭐ Thank you for choosing Move Go!</p>
+            <a href="https://g.page/movego" style="display:inline-block;background:#F59E0B;color:white;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">Leave a Google Review</a>
+          </div>
+        </td></tr>
+
+        <tr><td style="background:#F8FAFF;padding:20px 32px;text-align:center;border-top:1px solid #E2E8F0;">
+          <p style="font-size:12px;color:#94A3B8;margin:0;">Move Go Moving & Junk Removal · Seattle, WA<br>(206) 567-1499 · info@movegowa.com · movegowa.com</p>
         </td></tr>
 
       </table>
