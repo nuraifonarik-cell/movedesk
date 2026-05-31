@@ -265,20 +265,22 @@ export async function contractPdfBase64({ job, sigs }) {
 
   document.body.removeChild(container)
 
-  // Split into pages
+  // Split into pages with margins
   const doc    = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' })
   const pageW  = doc.internal.pageSize.getWidth()
   const pageH  = doc.internal.pageSize.getHeight()
-  const imgH   = (canvas.height * pageW) / canvas.width
+  const margin = 28
+  const imgW   = pageW - margin * 2
+  const imgH   = (canvas.height * imgW) / canvas.width
   const imgData = canvas.toDataURL('image/jpeg', 0.92)
 
-  doc.addImage(imgData, 'JPEG', 0, 0, pageW, imgH)
+  doc.addImage(imgData, 'JPEG', margin, margin, imgW, imgH)
 
-  let remaining = imgH - pageH
-  let offset = -pageH
+  let remaining = imgH + margin - pageH
+  let offset = margin - pageH
   while (remaining > 0) {
     doc.addPage()
-    doc.addImage(imgData, 'JPEG', 0, offset, pageW, imgH)
+    doc.addImage(imgData, 'JPEG', margin, offset, imgW, imgH)
     offset -= pageH
     remaining -= pageH
   }
