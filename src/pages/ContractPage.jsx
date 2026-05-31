@@ -243,7 +243,7 @@ export default function ContractPage() {
         })).catch(console.error)
       }
 
-      // Send contract email with PDF attachment
+      // Send contract email with PDF attachment (actual signed contract)
       if (job?.customer?.email) {
         const contractData = {
           customerName, blNumber, moveDate,
@@ -256,12 +256,20 @@ export default function ContractPage() {
           totalCost, balanceDue,
         }
         const { subject, html } = emailContractComplete(contractData)
-        const pdfBase64 = contractPdfBase64({
-          job, startTime, endTime, breakMin,
-          billHours, rate, laborTotal, packTotal, heavyTotal,
-          travelFee, deposit, totalCost, balanceDue,
-          payType, packingQty, heavyItems,
-        })
+
+        // Generate PDF with real signature images from sigs state
+        const jobWithTimes = {
+          ...job,
+          start_time: startTime,
+          end_time: endTime,
+          break_minutes: breakMin,
+          actual_hours: billHours,
+          payment_type: payType,
+          deposit_amount: deposit,
+          travel_fee_actual: travelFee,
+          actual_total: totalCost,
+        }
+        const pdfBase64 = contractPdfBase64({ job: jobWithTimes, sigs })
         sendEmail(
           job.customer.email, subject, html,
           { content: pdfBase64, filename: `MoveGo_Contract_${blNumber}.pdf` }
