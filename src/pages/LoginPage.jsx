@@ -35,10 +35,10 @@ export default function LoginPage() {
           </div>
 
           <h1 style={{ fontSize: 26, fontWeight: 800, color: 'white', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
+            Welcome back
           </h1>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 28px' }}>
-            {mode === 'login' ? 'Sign in to your Move Go account' : 'Get started with Move Go CRM'}
+            Sign in to your Move Go account
           </p>
 
           <form onSubmit={handle} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

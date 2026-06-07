@@ -140,6 +140,11 @@ export default function JobDetailPage() {
   const [editSaving, setEditSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [busyMap, setBusyMap] = useState({})
+  const [payModal, setPayModal]   = useState(false)
+  const [payAmount, setPayAmount] = useState('')
+  const [payDesc, setPayDesc]     = useState('')
+  const [payLoading, setPayLoading] = useState(false)
+  const [payLink, setPayLink]     = useState(null)
 
   // ── Single global operation lock using ref (immune to React re-renders) ────
   const opLock = useRef(false)
@@ -365,6 +370,30 @@ export default function JobDetailPage() {
 
   const inp = {width:'100%',border:'1px solid #E2E8F0',borderRadius:8,padding:'8px 11px',fontSize:13,outline:'none',background:'white',boxSizing:'border-box',fontFamily:'inherit'}
 
+  const requestPayment = async () => {
+    const amt = parseFloat(payAmount)
+    if (!amt || amt <= 0) return
+    setPayLoading(true)
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('square-payment', {
+        body: {
+          job_id:         id,
+          amount:         amt,
+          description:    payDesc || `Moving Service — ${job.move_date}`,
+          customer_email: job.customer?.email || '',
+          customer_name:  job.customer?.full_name || '',
+        },
+      })
+      if (fnErr) throw fnErr
+      setPayLink(data.payment_link_url)
+    } catch (e) {
+      console.error('Payment error:', e)
+      setError('Failed to create payment link: ' + (e?.message ?? 'Unknown error'))
+    } finally {
+      setPayLoading(false)
+    }
+  }
+
   if (loading) return <div style={{padding:40,textAlign:'center',color:'#94A3B8'}}>Loading...</div>
   if (!job)    return <div style={{padding:40,textAlign:'center',color:'#94A3B8'}}>Job not found. <Link to="/jobs">← Back</Link></div>
 
@@ -552,6 +581,10 @@ export default function JobDetailPage() {
               )}
               {job.status==='completed' && (<>
                 <div style={{padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,fontSize:12,color:'#065F46',fontWeight:600}}>✅ Job completed by foreman</div>
+                <button onClick={()=>{setPayAmount(String(job.total_price??''));setPayDesc(`Moving Service — ${job.move_date}`);setPayLink(null);setPayModal(true)}}
+                  style={{display:'flex',alignItems:'center',gap:8,padding:'11px 14px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#1D4ED8,#6366F1)',fontSize:13,color:'white',cursor:'pointer',fontWeight:700}}>
+                  💳 Request Payment
+                </button>
                 <button onClick={()=>navigate(`/jobs/${id}/contract-print`)} style={{display:'flex',alignItems:'center',gap:8,padding:'11px 14px',borderRadius:10,border:'1.5px solid #1D4ED8',background:'#EFF6FF',fontSize:13,color:'#1D4ED8',cursor:'pointer',fontWeight:700}}>🖨 Print / View Contract</button>
                 <button onClick={()=>navigate(`/jobs/${id}/invoice`)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',borderRadius:10,border:'0.5px solid #E2E8F0',background:'white',fontSize:13,color:'#374151',cursor:'pointer',fontWeight:500}}><Eye size={14} color="#6366F1"/> Preview Invoice</button>
                 <button onClick={()=>downloadInvoice(job)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',borderRadius:10,border:'0.5px solid #E2E8F0',background:'white',fontSize:13,color:'#374151',cursor:'pointer',fontWeight:500}}><FileText size={14} color="#1D4ED8"/> Download Invoice PDF</button>
@@ -611,6 +644,61 @@ export default function JobDetailPage() {
                 {editSaving?'Saving...':'Save Changes'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {payModal && (
+        <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.5)',padding:16}}>
+          <div style={{background:'white',borderRadius:16,padding:24,width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+              <h2 style={{fontSize:17,fontWeight:800,color:'#0F172A',margin:0}}>💳 Request Payment</h2>
+              <button onClick={()=>{setPayModal(false);setPayLink(null);setError('')}} style={{background:'#F1F5F9',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+            </div>
+
+            {!payLink ? (<>
+              <div style={{marginBottom:12}}>
+                <label style={{display:'block',fontSize:12,fontWeight:600,color:'#64748B',marginBottom:5}}>Amount ($)</label>
+                <input type="number" min="1" step="0.01" value={payAmount} onChange={e=>setPayAmount(e.target.value)}
+                  placeholder="0.00" style={{...inp,fontSize:20,fontWeight:700,color:'#0F172A',padding:'12px 14px'}}/>
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={{display:'block',fontSize:12,fontWeight:600,color:'#64748B',marginBottom:5}}>Description</label>
+                <input type="text" value={payDesc} onChange={e=>setPayDesc(e.target.value)}
+                  placeholder="Moving Service" style={inp}/>
+              </div>
+              {job.customer?.email
+                ? <div style={{padding:'10px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,fontSize:12,color:'#065F46',marginBottom:14}}>
+                    📧 Link will be emailed to {job.customer.email}
+                  </div>
+                : <div style={{padding:'10px 14px',background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:10,fontSize:12,color:'#92400E',marginBottom:14}}>
+                    ⚠️ No customer email — you'll copy the link manually
+                  </div>
+              }
+              {error && <div style={{background:'#FEF2F2',color:'#DC2626',fontSize:12,padding:'10px 12px',borderRadius:10,marginBottom:12}}>{error}</div>}
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>{setPayModal(false);setError('')}} style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid #E2E8F0',background:'white',fontSize:14,fontWeight:600,cursor:'pointer',color:'#374151'}}>Cancel</button>
+                <button onClick={requestPayment} disabled={payLoading||!payAmount}
+                  style={{flex:2,padding:'12px',borderRadius:12,border:'none',background:payLoading||!payAmount?'#94A3B8':'linear-gradient(135deg,#1D4ED8,#6366F1)',color:'white',fontSize:14,fontWeight:700,cursor:payLoading||!payAmount?'not-allowed':'pointer'}}>
+                  {payLoading ? 'Creating...' : 'Send Payment Link'}
+                </button>
+              </div>
+            </>) : (<>
+              <div style={{textAlign:'center',padding:'20px 0'}}>
+                <div style={{fontSize:40,marginBottom:12}}>✅</div>
+                <div style={{fontSize:15,fontWeight:700,color:'#0F172A',marginBottom:6}}>Payment link created!</div>
+                {job.customer?.email && <div style={{fontSize:13,color:'#059669',marginBottom:16}}>Email sent to {job.customer.email}</div>}
+                <div style={{background:'#F8FAFF',border:'1px solid #E2E8F0',borderRadius:10,padding:'12px 14px',marginBottom:16,wordBreak:'break-all',fontSize:12,color:'#1D4ED8',textAlign:'left'}}>
+                  {payLink}
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>{navigator.clipboard.writeText(payLink)}} style={{flex:1,padding:'11px',borderRadius:10,border:'1px solid #E2E8F0',background:'white',fontSize:13,fontWeight:600,cursor:'pointer'}}>📋 Copy Link</button>
+                  <a href={payLink} target="_blank" rel="noreferrer" style={{flex:1,padding:'11px',borderRadius:10,border:'none',background:'#0F172A',color:'white',fontSize:13,fontWeight:600,cursor:'pointer',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>Open →</a>
+                </div>
+              </div>
+              <button onClick={()=>{setPayModal(false);setPayLink(null)}} style={{width:'100%',marginTop:8,padding:'11px',borderRadius:10,border:'1px solid #E2E8F0',background:'white',fontSize:13,fontWeight:600,cursor:'pointer'}}>Close</button>
+            </>)}
           </div>
         </div>
       )}
