@@ -65,15 +65,13 @@ serve(async (req) => {
 
   // ── CREATE USER ──────────────────────────────────────────────────────────
   if (action === 'create') {
-    const { email, password, role, full_name, crew_role } = body
+    const { email, role, full_name, crew_role } = body
 
-    if (!email || !password) return new Response(JSON.stringify({ error: 'Email and password required' }), {
+    if (!email) return new Response(JSON.stringify({ error: 'Email is required' }), {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
 
-    const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email, password, email_confirm: true,
-    })
+    const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
     if (createErr) return new Response(JSON.stringify({ error: createErr.message }), {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
