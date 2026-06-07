@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, updateJob } from '../lib/supabase'
+import InstallPrompt from '../components/InstallPrompt'
 import { useNavigate as useNav } from 'react-router-dom'
 import { format, isToday, isTomorrow, parseISO } from 'date-fns'
 import { MapPin, Clock, Users, Phone, ChevronDown, CheckCircle2, Truck, Package, LogOut } from 'lucide-react'
@@ -217,6 +218,7 @@ export default function CrewAppPage() {
       </div>
 
       {/* Jobs */}
+      <InstallPrompt />
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
       <div style={{ padding: '16px 16px 32px' }}>
 

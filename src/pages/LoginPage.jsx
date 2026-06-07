@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import InstallPrompt from '../components/InstallPrompt'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
@@ -80,6 +81,7 @@ export default function LoginPage() {
         </div>
       </div>
       <style>{`@media(max-width:768px){.hidden-mobile{display:none!important}}`}</style>
+      <InstallPrompt />
     </div>
   )
 }
