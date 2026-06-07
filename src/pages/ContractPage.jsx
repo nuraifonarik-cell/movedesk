@@ -120,6 +120,10 @@ export default function ContractPage() {
   const [deposit, setDeposit]     = useState(FEES.deposit)
   const [travelFee, setTravelFee] = useState(FEES.travel_flat)
   const [sigs, setSigs]           = useState({})
+  const [payModal, setPayModal]   = useState(false)
+  const [payAmount, setPayAmount] = useState('')
+  const [payLoading, setPayLoading] = useState(false)
+  const [payLink, setPayLink]     = useState(null)
 
   useEffect(() => {
     getJob(id).then(async j => {
@@ -222,6 +226,29 @@ export default function ContractPage() {
       }
     } catch (e) {
       console.error('saveToDb error:', e)
+    }
+  }
+
+  const collectPayment = async () => {
+    const amt = parseFloat(payAmount)
+    if (!amt || amt <= 0) return
+    setPayLoading(true)
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('square-payment', {
+        body: {
+          job_id:         id,
+          amount:         amt,
+          description:    `Moving Service — ${job?.move_date ?? ''}`,
+          customer_email: job?.customer?.email ?? '',
+          customer_name:  job?.customer?.full_name ?? '',
+        },
+      })
+      if (fnErr) throw fnErr
+      setPayLink(data.payment_link_url)
+    } catch (e) {
+      alert('Payment error: ' + (e?.message ?? 'Unknown error'))
+    } finally {
+      setPayLoading(false)
     }
   }
 
@@ -564,41 +591,27 @@ export default function ContractPage() {
           />
 
           <SignaturePad
-            title="Customer Release — Job Complete"
-            subtitle="I have read and understand this contract, and release my household goods to the carrier."
+            title="Customer Signature — Job Complete"
+            subtitle="I have read this contract, inspected my goods and premises. No damages except as noted. The truck is empty and I release the carrier."
             existing={sigs.customer_release}
             onSave={d => saveSig('customer_release', d)}
           />
 
           <SignaturePad
             title="Carrier Representative Signature"
-            subtitle="Carrier confirms delivery and job completion"
+            subtitle="Carrier confirms delivery, inspection complete and truck is empty"
             existing={sigs.carrier_release}
             onSave={d => saveSig('carrier_release', d)}
           />
 
-          <SignaturePad
-            title="Customer Signature — Inspection Complete"
-            subtitle="I have inspected my goods and premises. No damages except as noted. The truck is empty and the job is complete."
-            existing={sigs.job_complete_customer}
-            onSave={d => saveSig('job_complete_customer', d)}
-          />
-
-          <SignaturePad
-            title="Carrier Signature — Inspection Complete"
-            subtitle="Carrier confirms inspection complete and truck is empty"
-            existing={sigs.job_complete_carrier}
-            onSave={d => saveSig('job_complete_carrier', d)}
-          />
-
           <button onClick={handleSubmit}
-            disabled={saving || !endTime || !sigs.end_initials || !sigs.customer_release || !sigs.carrier_release || !sigs.job_complete_customer || !sigs.job_complete_carrier}
-            style={S(saving||!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release||!sigs.job_complete_customer||!sigs.job_complete_carrier ? '#CBD5E1' : '#059669')}>
+            disabled={saving || !endTime || !sigs.end_initials || !sigs.customer_release || !sigs.carrier_release}
+            style={S(saving||!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release ? '#CBD5E1' : '#059669')}>
             {saving ? 'Saving...' : '✓ Submit & Complete Job'}
           </button>
-          {(!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release||!sigs.job_complete_customer||!sigs.job_complete_carrier) && (
+          {(!endTime||!sigs.end_initials||!sigs.customer_release||!sigs.carrier_release) && (
             <div style={{textAlign:'center', fontSize:12, color:'#94A3B8', marginTop:8}}>
-              Enter end time and collect all 5 signatures to complete
+              Enter end time and collect all 4 signatures to complete
             </div>
           )}
         </>}
@@ -629,6 +642,26 @@ export default function ContractPage() {
             </div>
 
             <div style={{display:'flex', flexDirection:'column', gap:10}}>
+              {/* Payment — show if balance > 0 */}
+              {balanceDue > 0 && !payLink && (
+                <button onClick={() => { setPayAmount(balanceDue.toFixed(2)); setPayModal(true) }}
+                  style={S('linear-gradient(135deg,#059669,#10B981)')}>
+                  💳 Collect Payment — ${balanceDue.toFixed(2)}
+                </button>
+              )}
+              {payLink && (
+                <div style={{background:'#F0FDF4', border:'1.5px solid #BBF7D0', borderRadius:14, padding:16}}>
+                  <div style={{fontSize:13, fontWeight:700, color:'#065F46', marginBottom:8}}>✅ Payment link sent!</div>
+                  {job?.customer?.email && <div style={{fontSize:12, color:'#059669', marginBottom:10}}>Email sent to {job.customer.email}</div>}
+                  <div style={{fontSize:11, color:'#1D4ED8', wordBreak:'break-all', background:'white', borderRadius:8, padding:'8px 10px', marginBottom:8}}>{payLink}</div>
+                  <div style={{display:'flex', gap:8}}>
+                    <button onClick={() => { if(navigator.clipboard){navigator.clipboard.writeText(payLink).catch(()=>{})} else{const t=document.createElement('textarea');t.value=payLink;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t)} }}
+                      style={{flex:1, padding:'9px', borderRadius:10, border:'1px solid #BBF7D0', background:'white', fontSize:13, fontWeight:600, cursor:'pointer'}}>📋 Copy</button>
+                    <a href={payLink} target="_blank" rel="noreferrer"
+                      style={{flex:1, padding:'9px', borderRadius:10, border:'none', background:'#065F46', color:'white', fontSize:13, fontWeight:600, textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center'}}>Open →</a>
+                  </div>
+                </div>
+              )}
               <button onClick={() => navigate(`/jobs/${id}/contract-view`)} style={S('#1D4ED8')}>
                 📄 View Contract
               </button>
@@ -641,6 +674,31 @@ export default function ContractPage() {
                 {fromCrew ? '← Back to My Jobs' : '← Back to Job'}
               </button>
             </div>
+
+            {/* Payment Modal */}
+            {payModal && (
+              <div style={{position:'fixed', inset:0, zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.5)'}}>
+                <div style={{background:'white', borderRadius:'20px 20px 0 0', padding:24, width:'100%', maxWidth:480, paddingBottom:36}}>
+                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20}}>
+                    <h2 style={{fontSize:18, fontWeight:800, color:'#0F172A', margin:0}}>💳 Collect Payment</h2>
+                    <button onClick={()=>setPayModal(false)} style={{background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:18}}>✕</button>
+                  </div>
+                  <div style={{marginBottom:14}}>
+                    <label style={{display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:6}}>Amount ($)</label>
+                    <input type="number" min="1" step="0.01" value={payAmount} onChange={e=>setPayAmount(e.target.value)}
+                      style={{width:'100%', border:'2px solid #E2E8F0', borderRadius:12, padding:'14px', fontSize:28, fontWeight:800, color:'#0F172A', outline:'none', boxSizing:'border-box', fontFamily:'inherit', textAlign:'center'}}/>
+                  </div>
+                  {job?.customer?.email
+                    ? <div style={{padding:'10px 14px', background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, fontSize:13, color:'#065F46', marginBottom:16}}>📧 Will email to {job.customer.email}</div>
+                    : <div style={{padding:'10px 14px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:10, fontSize:13, color:'#92400E', marginBottom:16}}>⚠️ No customer email — copy link manually</div>
+                  }
+                  <button onClick={async ()=>{ await collectPayment(); setPayModal(false) }} disabled={payLoading||!payAmount}
+                    style={{width:'100%', padding:'15px', borderRadius:14, border:'none', background:payLoading||!payAmount?'#94A3B8':'linear-gradient(135deg,#059669,#10B981)', color:'white', fontSize:16, fontWeight:800, cursor:payLoading||!payAmount?'not-allowed':'pointer'}}>
+                    {payLoading ? 'Creating link...' : 'Send Payment Link →'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
