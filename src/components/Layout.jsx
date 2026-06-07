@@ -1,22 +1,29 @@
 import { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, ChevronRight } from 'lucide-react'
+import { useRole } from '../App'
+import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2 } from 'lucide-react'
 
-const nav = [
+const baseNav = [
   { to: '/',          icon: LayoutDashboard, label: 'Dashboard',   group: 'main' },
-  { to: '/jobs',      icon: FileText,        label: 'Jobs',        group: 'main', badge: true },
+  { to: '/jobs',      icon: FileText,        label: 'Jobs',        group: 'main' },
   { to: '/estimate',  icon: Truck,           label: 'New Estimate',group: 'main' },
   { to: '/calendar',  icon: Calendar,        label: 'Calendar',    group: 'manage' },
   { to: '/customers', icon: Users,           label: 'Customers',   group: 'manage' },
   { to: '/crew',      icon: HardHat,         label: 'Crew',        group: 'manage' },
 ]
+const adminNav = [
+  { to: '/stats', icon: BarChart2, label: 'Analytics', group: 'manage' },
+]
 
 export default function Layout({ children }) {
   const { user, signOut } = useAuth()
+  const role      = useRole()
   const navigate  = useNavigate()
   const location  = useLocation()
   const [open, setOpen] = useState(false)
+
+  const nav = role === 'admin' ? [...baseNav, ...adminNav] : baseNav
 
   const handleSignOut = async () => { await signOut(); navigate('/login') }
 
