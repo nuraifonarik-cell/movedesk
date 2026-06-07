@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getJob, getCrew, supabase } from '../lib/supabase'
 import { downloadInvoice } from '../lib/invoice'
 import { format } from 'date-fns'
-import { ArrowLeft, Users, DollarSign, Phone, Mail, ClipboardList, CheckCircle2, FileText, Eye, UserCheck, HardHat } from 'lucide-react'
+import { ArrowLeft, Users, DollarSign, Phone, Mail, Truck, ClipboardList, CheckCircle2, FileText, Eye, UserCheck, HardHat } from 'lucide-react'
 
 const STATUSES = [
   { value:'new',         label:'New',         color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' },
