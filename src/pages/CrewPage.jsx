@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Phone, Plus, X, UserCheck, Truck, HardHat, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { Phone, Plus, X, UserCheck, HardHat, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { format } from 'date-fns'
 
 const ROLES = [
   { key:'foreman', label:'Foreman', icon:UserCheck, color:'#1D4ED8', bg:'#EFF6FF', headerBg:'#3B82F6', dot:'#93C5FD' },
   { key:'helper',  label:'Helper',  icon:HardHat,  color:'#059669', bg:'#F0FDF4', headerBg:'#34D399', dot:'#6EE7B7' },
-  { key:'driver',  label:'Driver',  icon:Truck,    color:'#D97706', bg:'#FFFBEB', headerBg:'#FBBF24', dot:'#FCD34D' },
 ]
 
 const inp = { width:'100%', border:'0.5px solid #E2E8F0', borderRadius:10, padding:'10px 12px', fontSize:14, outline:'none', background:'#F8FAFF', boxSizing:'border-box', fontFamily:'inherit' }
@@ -66,7 +65,7 @@ export default function CrewPage() {
     const { error: err } = await supabase.from('crew_members').insert({
       full_name: form.full_name, phone: form.phone,
       email: form.email || null,
-      role: form.role_type==='driver' ? 'driver' : form.role_type==='foreman' ? 'lead' : 'mover',
+      role: form.role_type==='foreman' ? 'lead' : 'mover',
       role_type: form.role_type, is_active: true
     })
     if (err) setError(err.message)
@@ -247,7 +246,7 @@ export default function CrewPage() {
               {/* Role selector */}
               <div>
                 <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:8 }}>Role</label>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                   {ROLES.map(r => (
                     <button key={r.key} onClick={() => set('role_type', r.key)}
                       style={{ padding:'12px 8px', borderRadius:12, border:`2px solid ${form.role_type===r.key ? r.color : '#E2E8F0'}`, background: form.role_type===r.key ? r.bg : 'white', color: form.role_type===r.key ? r.color : '#64748B', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
