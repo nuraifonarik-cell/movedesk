@@ -316,6 +316,12 @@ export default function ContractPage() {
           <div style={{color:'white', fontWeight:700, fontSize:15}}>Contract</div>
           <div style={{color:'rgba(255,255,255,0.5)', fontSize:11}}>{customer.full_name} · {job.bl_number ?? `BL-${id?.slice(0,6).toUpperCase()}`}</div>
         </div>
+        {fromCrew && step > 0 && (
+          <button onClick={() => navigate('/crew-app')}
+            style={{background:'rgba(255,255,255,0.15)', border:'none', borderRadius:9, padding:'7px 12px', color:'white', fontSize:12, fontWeight:600, cursor:'pointer'}}>
+            My Jobs
+          </button>
+        )}
         <button onClick={() => navigate(`/jobs/${id}/contract-print`)}
           style={{background:'rgba(255,255,255,0.1)', border:'none', borderRadius:9, padding:'7px 12px', color:'white', fontSize:12, fontWeight:600, cursor:'pointer'}}>
           🖨 Print

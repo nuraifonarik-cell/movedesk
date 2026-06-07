@@ -27,6 +27,7 @@ export default function CrewAppPage() {
   const [expanded, setExpanded] = useState(null)
   const [notes, setNotes]     = useState({})
   const [saving, setSaving]   = useState({})
+  const [showCompleted, setShowCompleted] = useState(false)
 
   // Auth
   const [email, setEmail]   = useState('')
@@ -95,7 +96,11 @@ export default function CrewAppPage() {
     q = q.in('id', assignments.map(a => a.job_id))
     const { data: jobsData } = await q
     setCrew(crewMember)
-    setJobs(jobsData ?? [])
+    const jobsData2 = jobsData ?? []
+    setJobs(jobsData2)
+    // Auto-expand the active (in_progress) job
+    const active = jobsData2.find(j => j.status === 'in_progress')
+    if (active) setExpanded(active.id)
     setLoading(false)
   }
 
@@ -168,8 +173,10 @@ export default function CrewAppPage() {
     </div>
   )
 
-  const todayJobs = jobs.filter(j => isToday(parseISO(j.move_date)))
-  const upcomingJobs = jobs.filter(j => !isToday(parseISO(j.move_date)))
+  const activeJobs    = jobs.filter(j => j.status === 'in_progress')
+  const todayJobs     = jobs.filter(j => isToday(parseISO(j.move_date)) && j.status !== 'in_progress' && j.status !== 'completed')
+  const upcomingJobs  = jobs.filter(j => !isToday(parseISO(j.move_date)) && j.status !== 'completed')
+  const completedJobs = jobs.filter(j => j.status === 'completed')
 
   // ── Main crew view ─────────────────────────────────────────────────────────
   return (
@@ -210,6 +217,7 @@ export default function CrewAppPage() {
       </div>
 
       {/* Jobs */}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
       <div style={{ padding: '16px 16px 32px' }}>
 
         {jobs.length === 0 && (
@@ -220,21 +228,48 @@ export default function CrewAppPage() {
           </div>
         )}
 
+        {/* Active (in_progress) — top priority */}
+        {activeJobs.length > 0 && (
+          <>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:'#D97706', animation:'pulse 1.5s infinite' }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'#D97706', textTransform:'uppercase', letterSpacing:'0.08em' }}>Active Now</span>
+            </div>
+            {activeJobs.map(job => <JobCard key={job.id} job={job} expanded={expanded} setExpanded={setExpanded} notes={notes} setNotes={setNotes} saving={saving} changeStatus={changeStatus} saveNote={saveNote} />)}
+          </>
+        )}
+
+        {/* Today's scheduled */}
         {todayJobs.length > 0 && (
           <>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#3B82F6', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#3B82F6', textTransform: 'uppercase', letterSpacing: '0.08em', margin: activeJobs.length ? '20px 0 10px' : '0 0 10px' }}>
               📅 Today — {format(new Date(), 'MMMM d')}
             </div>
             {todayJobs.map(job => <JobCard key={job.id} job={job} expanded={expanded} setExpanded={setExpanded} notes={notes} setNotes={setNotes} saving={saving} changeStatus={changeStatus} saveNote={saveNote} />)}
           </>
         )}
 
+        {/* Upcoming */}
         {upcomingJobs.length > 0 && (
           <>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 10px' }}>
               🗓 Upcoming
             </div>
             {upcomingJobs.map(job => <JobCard key={job.id} job={job} expanded={expanded} setExpanded={setExpanded} notes={notes} setNotes={setNotes} saving={saving} changeStatus={changeStatus} saveNote={saveNote} />)}
+          </>
+        )}
+
+        {/* Completed — collapsed at bottom */}
+        {completedJobs.length > 0 && (
+          <>
+            <button onClick={() => setShowCompleted(v => !v)}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'100%', margin:'20px 0 10px', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+              <span style={{ fontSize:12, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                ✅ Completed ({completedJobs.length})
+              </span>
+              <span style={{ fontSize:11, color:'#9CA3AF' }}>{showCompleted ? '▲ hide' : '▼ show'}</span>
+            </button>
+            {showCompleted && completedJobs.map(job => <JobCard key={job.id} job={job} expanded={expanded} setExpanded={setExpanded} notes={notes} setNotes={setNotes} saving={saving} changeStatus={changeStatus} saveNote={saveNote} />)}
           </>
         )}
       </div>
@@ -251,6 +286,14 @@ function JobCard({ job, expanded, setExpanded, notes, setNotes, saving, changeSt
   const [payAmount, setPayAmount] = useState('')
   const [payLoading, setPayLoading] = useState(false)
   const [payLink, setPayLink]     = useState(null)
+
+  // Auto-save notes 1.5s after last change
+  useEffect(() => {
+    const current = notes[job.id]
+    if (current === undefined || current === (job.notes ?? '')) return
+    const timer = setTimeout(() => saveNote(job.id), 1500)
+    return () => clearTimeout(timer)
+  }, [notes[job.id]])
 
   const openPayModal = () => {
     setPayAmount(String(job.total_price ?? ''))
@@ -461,10 +504,13 @@ function JobCard({ job, expanded, setExpanded, notes, setNotes, saving, changeSt
               rows={3}
               style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
-            <button onClick={() => saveNote(job.id)}
-              style={{ marginTop: 8, width: '100%', padding: '11px', borderRadius: 12, border: 'none', background: saving[`note_${job.id}`] ? '#059669' : '#1E3A8A', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-              {saving[`note_${job.id}`] ? '✓ Saved' : 'Save Note'}
-            </button>
+            <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
+              <button onClick={() => saveNote(job.id)}
+                style={{ flex:1, padding: '11px', borderRadius: 12, border: 'none', background: saving[`note_${job.id}`] ? '#059669' : '#1E3A8A', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                {saving[`note_${job.id}`] ? '✓ Saved' : 'Save Note'}
+              </button>
+            </div>
+            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:4, textAlign:'right' }}>Auto-saves after you stop typing</div>
           </div>
         </div>
       )}
