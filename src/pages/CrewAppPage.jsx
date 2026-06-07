@@ -64,8 +64,8 @@ export default function CrewAppPage() {
 
     let q = supabase
       .from('jobs')
-      .select(`*, customer:customers(full_name, phone)`)
-      .in('status', ['new', 'scheduled', 'in_progress'])
+      .select(`*, customer:customers(full_name, phone, email)`)
+      .in('status', ['new', 'scheduled', 'in_progress', 'completed'])
       .gte('move_date', from.toISOString().split('T')[0])
       .lte('move_date', to.toISOString().split('T')[0])
       .order('move_date', { ascending: true })
@@ -247,6 +247,40 @@ function JobCard({ job, expanded, setExpanded, notes, setNotes, saving, changeSt
   const statusInfo = STATUS_FLOW.find(s => s.value === job.status) ?? STATUS_FLOW[0]
   const APT = { studio: 'Studio', '1br': '1 Bedroom', '2br': '2 Bedrooms', '3br': '3 Bedrooms', house: 'House' }
 
+  const [payModal, setPayModal]   = useState(false)
+  const [payAmount, setPayAmount] = useState('')
+  const [payLoading, setPayLoading] = useState(false)
+  const [payLink, setPayLink]     = useState(null)
+
+  const openPayModal = () => {
+    setPayAmount(String(job.total_price ?? ''))
+    setPayLink(null)
+    setPayModal(true)
+  }
+
+  const requestPayment = async () => {
+    const amt = parseFloat(payAmount)
+    if (!amt || amt <= 0) return
+    setPayLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('square-payment', {
+        body: {
+          job_id:         job.id,
+          amount:         amt,
+          description:    `Moving Service — ${job.move_date}`,
+          customer_email: job.customer?.email ?? '',
+          customer_name:  job.customer?.full_name ?? '',
+        },
+      })
+      if (error) throw error
+      setPayLink(data.payment_link_url)
+    } catch (e) {
+      alert('Payment error: ' + (e?.message ?? 'Unknown error'))
+    } finally {
+      setPayLoading(false)
+    }
+  }
+
   return (
     <div style={{ background: 'white', borderRadius: 16, marginBottom: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
       {/* Card header */}
@@ -331,16 +365,88 @@ function JobCard({ job, expanded, setExpanded, notes, setNotes, saving, changeSt
           </a>
 
           {/* Open Contract button — for foreman */}
-          <button
-            onClick={() => window.location.href = `/jobs/${job.id}/contract?from=crew`}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#1D4ED8,#6366F1)', color:'white', fontWeight:800, fontSize:15, cursor:'pointer', marginBottom:14, width:'100%', boxShadow:'0 4px 12px rgba(99,102,241,0.35)' }}>
-            📋 Open Contract
-          </button>
+          {job.status !== 'completed' && (
+            <button
+              onClick={() => window.location.href = `/jobs/${job.id}/contract?from=crew`}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#1D4ED8,#6366F1)', color:'white', fontWeight:800, fontSize:15, cursor:'pointer', marginBottom:14, width:'100%', boxShadow:'0 4px 12px rgba(99,102,241,0.35)' }}>
+              📋 Open Contract
+            </button>
+          )}
 
-          {/* Status info — read only, controlled by contract */}
-          <div style={{ marginBottom: 14, padding: '10px 14px', background: '#F8FAFF', borderRadius: 10, fontSize: 12, color: '#64748B' }}>
-            📋 Status updates automatically when you fill the contract
-          </div>
+          {/* Payment button */}
+          {['in_progress','completed'].includes(job.status) && (
+            <button onClick={openPayModal}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#059669,#10B981)', color:'white', fontWeight:800, fontSize:15, cursor:'pointer', marginBottom:14, width:'100%', boxShadow:'0 4px 12px rgba(5,150,105,0.35)' }}>
+              💳 Collect Payment
+            </button>
+          )}
+
+          {job.status === 'completed' && (
+            <div style={{ marginBottom: 14, padding: '10px 14px', background: '#ECFDF5', border:'1px solid #6EE7B7', borderRadius: 10, fontSize: 12, color: '#065F46', fontWeight:600 }}>
+              ✅ Job completed
+            </div>
+          )}
+          {job.status !== 'completed' && (
+            <div style={{ marginBottom: 14, padding: '10px 14px', background: '#F8FAFF', borderRadius: 10, fontSize: 12, color: '#64748B' }}>
+              📋 Status updates automatically when you fill the contract
+            </div>
+          )}
+
+          {/* Payment Modal */}
+          {payModal && (
+            <div style={{ position:'fixed', inset:0, zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.5)' }}>
+              <div style={{ background:'white', borderRadius:'20px 20px 0 0', padding:24, width:'100%', maxWidth:480, paddingBottom:36 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                  <h2 style={{ fontSize:18, fontWeight:800, color:'#0F172A', margin:0 }}>💳 Collect Payment</h2>
+                  <button onClick={()=>{setPayModal(false);setPayLink(null)}} style={{ background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:18 }}>✕</button>
+                </div>
+
+                {!payLink ? (<>
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:6 }}>Amount ($)</label>
+                    <input type="number" min="1" step="0.01" value={payAmount} onChange={e=>setPayAmount(e.target.value)}
+                      placeholder="0.00"
+                      style={{ width:'100%', border:'2px solid #E2E8F0', borderRadius:12, padding:'14px', fontSize:24, fontWeight:800, color:'#0F172A', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
+                  </div>
+                  {job.customer?.email
+                    ? <div style={{ padding:'10px 14px', background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, fontSize:13, color:'#065F46', marginBottom:16 }}>
+                        📧 Link will be emailed to {job.customer.email}
+                      </div>
+                    : <div style={{ padding:'10px 14px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:10, fontSize:13, color:'#92400E', marginBottom:16 }}>
+                        ⚠️ No customer email — copy the link manually
+                      </div>
+                  }
+                  <button onClick={requestPayment} disabled={payLoading || !payAmount}
+                    style={{ width:'100%', padding:'15px', borderRadius:14, border:'none', background:payLoading||!payAmount?'#94A3B8':'linear-gradient(135deg,#059669,#10B981)', color:'white', fontSize:16, fontWeight:800, cursor:payLoading||!payAmount?'not-allowed':'pointer' }}>
+                    {payLoading ? 'Creating link...' : 'Send Payment Link →'}
+                  </button>
+                </>) : (<>
+                  <div style={{ textAlign:'center', padding:'16px 0' }}>
+                    <div style={{ fontSize:48, marginBottom:10 }}>✅</div>
+                    <div style={{ fontSize:16, fontWeight:700, color:'#0F172A', marginBottom:4 }}>Payment link ready!</div>
+                    {job.customer?.email && <div style={{ fontSize:13, color:'#059669', marginBottom:16 }}>Email sent to {job.customer.email}</div>}
+                    <div style={{ background:'#F8FAFF', border:'1px solid #E2E8F0', borderRadius:10, padding:'12px', marginBottom:16, wordBreak:'break-all', fontSize:12, color:'#1D4ED8', textAlign:'left' }}>
+                      {payLink}
+                    </div>
+                    <div style={{ display:'flex', gap:10 }}>
+                      <button onClick={()=>navigator.clipboard.writeText(payLink)}
+                        style={{ flex:1, padding:'13px', borderRadius:12, border:'1.5px solid #E2E8F0', background:'white', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                        📋 Copy
+                      </button>
+                      <a href={payLink} target="_blank" rel="noreferrer"
+                        style={{ flex:1, padding:'13px', borderRadius:12, border:'none', background:'#0F172A', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        Open →
+                      </a>
+                    </div>
+                  </div>
+                  <button onClick={()=>{setPayModal(false);setPayLink(null)}}
+                    style={{ width:'100%', marginTop:12, padding:'12px', borderRadius:12, border:'1px solid #E2E8F0', background:'white', fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                    Done
+                  </button>
+                </>)}
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div>
