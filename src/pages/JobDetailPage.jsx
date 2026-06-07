@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getJob, getCrew, supabase } from '../lib/supabase'
 import { downloadInvoice } from '../lib/invoice'
 import { format } from 'date-fns'
-import { ArrowLeft, Users, DollarSign, Phone, Mail, Truck, ClipboardList, CheckCircle2, FileText, Eye, UserCheck, HardHat } from 'lucide-react'
+import { ArrowLeft, Users, DollarSign, Phone, Mail, ClipboardList, CheckCircle2, FileText, Eye, UserCheck, HardHat } from 'lucide-react'
 
 const STATUSES = [
   { value:'new',         label:'New',         color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' },
@@ -262,7 +262,7 @@ export default function JobDetailPage() {
 
     // Warning: exceeding movers_count
     if (!isChecked) {
-      const getRoleKey = m => m.role_type ?? (m.role==='lead'?'foreman':m.role==='driver'?'driver':'helper')
+      const getRoleKey = m => m.role_type ?? (m.role==='lead'?'foreman':'helper')
       const assignedNow = (job?.assignments ?? []).map(a => a.crew_member_id)
       const moverCount = crew.filter(m => {
         const role = getRoleKey(m)
@@ -353,14 +353,13 @@ export default function JobDetailPage() {
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const getRoleKey = m => m.role_type ?? (m.role==='lead'?'foreman':m.role==='driver'?'driver':'helper')
+  const getRoleKey = m => m.role_type ?? (m.role==='lead'?'foreman':'helper')
   const foremans = crew.filter(m => getRoleKey(m) === 'foreman')
   const helpers  = crew.filter(m => getRoleKey(m) === 'helper')
-  const drivers  = crew.filter(m => getRoleKey(m) === 'driver')
+
 
   const assignedIds    = (job?.assignments ?? []).map(a => a.crew_member_id)
   const foremanId      = foremans.find(m => assignedIds.includes(m.id))?.id ?? ''
-  const driverId       = drivers.find(m => assignedIds.includes(m.id))?.id ?? ''
   const helperAssigned = assignedIds.filter(aid => helpers.some(h => h.id === aid))
 
   const statusInfo = STATUSES.find(s => s.value === job?.status) ?? STATUSES[0]
@@ -512,14 +511,6 @@ export default function JobDetailPage() {
                       members={helpers} assignedIds={helperAssigned} busyMap={busyMap}
                       disabled={isLocked || opPending}
                       onToggle={toggleHelper}
-                    />
-                  )}
-                  {drivers.length > 0 && (
-                    <CrewPicker
-                      members={drivers} assignedId={driverId} busyMap={busyMap}
-                      disabled={isLocked || opPending} color="#D97706" bg="#FFFBEB"
-                      label="Driver" icon={Truck}
-                      onSelect={(mid, isSel) => assignSingle(mid, isSel, 'driver')}
                     />
                   )}
                 </div>
