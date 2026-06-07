@@ -693,7 +693,10 @@ export default function JobDetailPage() {
                   {payLink}
                 </div>
                 <div style={{display:'flex',gap:8}}>
-                  <button onClick={()=>{navigator.clipboard.writeText(payLink)}} style={{flex:1,padding:'11px',borderRadius:10,border:'1px solid #E2E8F0',background:'white',fontSize:13,fontWeight:600,cursor:'pointer'}}>📋 Copy Link</button>
+                  <button onClick={()=>{
+                    if(navigator.clipboard){navigator.clipboard.writeText(payLink).catch(()=>{})}
+                    else{const t=document.createElement('textarea');t.value=payLink;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t)}
+                  }} style={{flex:1,padding:'11px',borderRadius:10,border:'1px solid #E2E8F0',background:'white',fontSize:13,fontWeight:600,cursor:'pointer'}}>📋 Copy Link</button>
                   <a href={payLink} target="_blank" rel="noreferrer" style={{flex:1,padding:'11px',borderRadius:10,border:'none',background:'#0F172A',color:'white',fontSize:13,fontWeight:600,cursor:'pointer',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>Open →</a>
                 </div>
               </div>

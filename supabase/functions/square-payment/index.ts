@@ -90,33 +90,50 @@ serve(async (req) => {
 
   if (dbErr) console.error('DB insert error:', dbErr)
 
-  // Email link to customer
+  // Email link to customer directly via SendGrid
   if (customerEmail) {
-    supabase.functions.invoke('send-email', { body: {
-      to: customerEmail,
-      subject: `💳 Payment Request — Move Go Moving`,
-      html: `<html><body style="font-family:Arial,sans-serif;background:#F1F5F9;padding:20px;">
-        <div style="max-width:560px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;">
-          <div style="background:#0F172A;padding:24px;text-align:center;">
-            <div style="font-size:20px;font-weight:800;color:white;">&#9658; MOVE GO</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.5);">Moving &amp; Junk Removal &middot; Seattle, WA</div>
-          </div>
-          <div style="padding:28px;">
-            <h2 style="color:#0F172A;margin:0 0 8px;">Payment Request</h2>
-            <p style="color:#64748B;font-size:14px;">Hi ${customerName || 'there'}, please use the link below to pay securely through Square.</p>
-            <div style="background:#F8FAFF;border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
-              <div style="font-size:13px;color:#64748B;margin-bottom:6px;">${description}</div>
-              <div style="font-size:36px;font-weight:800;color:#0F172A;">$${amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            </div>
-            <a href="${paymentLink.url}"
-               style="display:block;background:linear-gradient(135deg,#1D4ED8,#6366F1);color:white;text-align:center;padding:16px 24px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:700;margin-bottom:20px;">
-              &#128179; Pay Now &rarr;
-            </a>
-            <p style="font-size:12px;color:#94A3B8;text-align:center;">Secure payment powered by Square &middot; (206) 567-1499</p>
-          </div>
-        </div>
-      </body></html>`,
-    }}).catch(console.error)
+    const SENDGRID_KEY  = Deno.env.get('SENDGRID_API_KEY')
+    const SENDGRID_FROM = Deno.env.get('SENDGRID_FROM') || 'info@movegowa.com'
+    if (SENDGRID_KEY) {
+      const amountFmt = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${SENDGRID_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: customerEmail }] }],
+          from: { email: SENDGRID_FROM, name: 'Move Go Moving' },
+          subject: '💳 Payment Request — Move Go Moving',
+          content: [{ type: 'text/html', value: `
+            <html><body style="font-family:Arial,sans-serif;background:#F1F5F9;padding:20px;">
+              <div style="max-width:560px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;">
+                <div style="background:#0F172A;padding:24px;text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:white;">&#9658; MOVE GO</div>
+                  <div style="font-size:11px;color:rgba(255,255,255,0.5);">Moving &amp; Junk Removal &middot; Seattle, WA</div>
+                </div>
+                <div style="padding:28px;">
+                  <h2 style="color:#0F172A;margin:0 0 8px;">Payment Request</h2>
+                  <p style="color:#64748B;font-size:14px;">Hi ${customerName || 'there'}, please use the button below to pay securely through Square.</p>
+                  <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="background:#F8FAFF;border:1px solid #E2E8F0;border-radius:12px;padding:20px;text-align:center;">
+                      <div style="font-size:13px;color:#64748B;margin-bottom:6px;">${description}</div>
+                      <div style="font-size:36px;font-weight:800;color:#0F172A;">$${amountFmt}</div>
+                    </td></tr>
+                  </table>
+                  <div style="margin:20px 0;">
+                    <a href="${paymentLink.url}" style="display:block;background:#1D4ED8;color:white;text-align:center;padding:16px 24px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:700;">
+                      Pay Now &#8594;
+                    </a>
+                  </div>
+                  <p style="font-size:12px;color:#94A3B8;text-align:center;">Secure payment powered by Square &middot; (206) 567-1499</p>
+                </div>
+              </div>
+            </body></html>
+          `}],
+        }),
+      }).catch(e => console.error('SendGrid error:', e))
+    } else {
+      console.warn('SENDGRID_API_KEY not set — email not sent')
+    }
   }
 
   return new Response(JSON.stringify({

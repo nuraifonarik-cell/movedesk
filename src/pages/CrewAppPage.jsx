@@ -429,7 +429,10 @@ function JobCard({ job, expanded, setExpanded, notes, setNotes, saving, changeSt
                       {payLink}
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={()=>navigator.clipboard.writeText(payLink)}
+                      <button onClick={()=>{
+                        if(navigator.clipboard){navigator.clipboard.writeText(payLink).catch(()=>{})}
+                        else{const t=document.createElement('textarea');t.value=payLink;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t)}
+                      }}
                         style={{ flex:1, padding:'13px', borderRadius:12, border:'1.5px solid #E2E8F0', background:'white', fontSize:14, fontWeight:700, cursor:'pointer' }}>
                         📋 Copy
                       </button>
