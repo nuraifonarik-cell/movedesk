@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRole } from '../App'
-import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2 } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2, UserCog } from 'lucide-react'
 
 const baseNav = [
   { to: '/',          icon: LayoutDashboard, label: 'Dashboard',   group: 'main' },
@@ -14,6 +14,7 @@ const baseNav = [
 ]
 const adminNav = [
   { to: '/stats', icon: BarChart2, label: 'Analytics', group: 'manage' },
+  { to: '/users', icon: UserCog,   label: 'Users',     group: 'manage' },
 ]
 
 export default function Layout({ children }) {

@@ -18,6 +18,7 @@ import ContractViewPage    from './pages/ContractViewPage'
 import CrewAppPage         from './pages/CrewAppPage'
 import BookingPage         from './pages/BookingPage'
 import StatsPage           from './pages/StatsPage'
+import UsersPage           from './pages/UsersPage'
 
 // null=loading | 'admin' | 'dispatcher' | 'crew' | 'denied'
 export const RoleContext = createContext(null)
@@ -120,6 +121,7 @@ function AppRoutes() {
         <Route path="/customers"                   element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
         <Route path="/crew"                        element={<ProtectedRoute><CrewPage /></ProtectedRoute>} />
         <Route path="/stats"                       element={<ProtectedRoute adminOnly><StatsPage /></ProtectedRoute>} />
+        <Route path="/users"                       element={<ProtectedRoute adminOnly><UsersPage /></ProtectedRoute>} />
         <Route path="/crew-app"                    element={user && role === 'crew' ? <CrewAppPage /> : user ? <Navigate to="/" replace /> : <Navigate to="/login" replace />} />
         <Route path="/booking"                     element={<BookingPage />} />
         <Route path="*"                            element={<Navigate to="/" replace />} />
