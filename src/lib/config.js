@@ -15,22 +15,19 @@ export const COMPANY = {
 export const GOOGLE_REVIEW_URL = 'https://g.page/movego'
 export const FEEDBACK_FORM_URL = 'https://www.movegowa.com/feedback'
 
-// Hourly rates — UPDATE when confirmed with partners
 export const RATES = {
-  '2_movers_cash':   120,
-  '2_movers_card':   130,
-  '3_movers_cash':   165,
-  '3_movers_card':   175,
-  '4_movers_cash':   210,
-  '4_movers_card':   220,
+  '2_movers_cash':   126,
+  '2_movers_card':   146,
+  '3_movers_cash':   169,
+  '3_movers_card':   199,
+  '4_movers_cash':   215,
+  '4_movers_card':   246,
 }
 
 export const FEES = {
-  travel_flat:       80,
+  travel_options:    [125, 160],
   min_hours:         3,
   deposit:           50,
-  cash_discount_pct: 5,
-  card_fee_pct:      3,
   square_fee_pct:    2.6,
 }
 

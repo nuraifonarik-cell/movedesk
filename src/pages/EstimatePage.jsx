@@ -18,16 +18,17 @@ const STAIRS = ['No stairs','1 flight','2 flights','3+ flights']
 const PARKING = ['Directly in front','Short walk','Long walk','Not sure']
 const HEAVY_ITEMS = ['Piano','Treadmill','Safe','Pool table','Large appliance','Oversized couch','Large dining table','Heavy dresser','Exercise equipment','Other']
 
-const RATES = { 2:120, 3:165, 4:210 }
-const TRAVEL_RATE = 2.5
+const RATES_CASH = { 2:126, 3:169, 4:215 }
+const RATES_CARD = { 2:146, 3:199, 4:246 }
+const TRAVEL_OPTIONS = [125, 160]
 const MIN_HOURS = 3
 const DEPOSIT = 50
 
 function calcPrice(form) {
   const hrs  = Math.max(HOME_TYPES.find(h=>h.value===form.apt_type)?.hours ?? 4, MIN_HOURS)
-  const rate = RATES[form.movers_count] ?? 165
+  const rate = form.payment_type === 'card' ? (RATES_CARD[form.movers_count] ?? 199) : (RATES_CASH[form.movers_count] ?? 169)
   const mats = ({studio:40,'1br':75,'2br':110,'3br':150,'4br':175,house:200})[form.apt_type] ?? 75
-  const trav = Math.round((form.distance_miles||10) * TRAVEL_RATE)
+  const trav = form.travel_fee ?? 125
   return { hours:hrs, rate, mats, trav, total: rate*hrs + trav + mats }
 }
 
@@ -66,6 +67,7 @@ export default function EstimatePage() {
   const [form, setForm] = useState({
     // Step 1
     apt_type: '2br', from_address: '', to_address: '', distance_miles: 10, movers_count: 3,
+    travel_fee: 125, payment_type: 'cash',
     // Step 2
     pickup_stairs: 'No stairs', pickup_elevator: 'No', pickup_parking: 'Directly in front',
     dropoff_stairs: 'No stairs', dropoff_elevator: 'No', dropoff_parking: 'Directly in front',
@@ -80,7 +82,7 @@ export default function EstimatePage() {
     ? form.heavy_items.filter(i=>i!==item) : [...form.heavy_items, item])
 
   const price = useMemo(() => calcPrice(form), [
-    form.apt_type, form.movers_count, form.distance_miles
+    form.apt_type, form.movers_count, form.travel_fee, form.payment_type
   ])
 
   const validate = () => {
@@ -132,6 +134,7 @@ export default function EstimatePage() {
         travel_fee: price.trav,
         materials_fee: price.mats,
         total_price: price.total,
+        payment_type: form.payment_type,
         notes: noteParts.join('\n') || null,
       })
       const { format } = await import('date-fns')
@@ -200,6 +203,7 @@ export default function EstimatePage() {
         ['Move Size', HOME_TYPES.find(h=>h.value===form.apt_type)?.label ?? ''],
         ['Route', form.from_address && form.to_address ? `${form.from_address.split(',')[0]} → ${form.to_address.split(',')[0]}` : '—'],
         ['Distance', `${form.distance_miles} mi`],
+        ['Payment', form.payment_type === 'card' ? '💳 Card' : '💵 Cash'],
         ['Date', form.move_date || '—'],
       ].map(([k,v]) => (
         <div key={k} style={{display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:6, color:'#64748B'}}>
@@ -260,7 +264,7 @@ export default function EstimatePage() {
           </div>
         </div>
 
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
           <div>
             <label style={lbl}>Distance (miles)</label>
             <input type="number" min="1" max="500" value={form.distance_miles}
@@ -273,6 +277,28 @@ export default function EstimatePage() {
                 <OptionBtn key={n} selected={form.movers_count===n} onClick={()=>set('movers_count',n)}>
                   {n} movers
                 </OptionBtn>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+          <div>
+            <label style={lbl}>Payment Type</label>
+            <div style={{display:'flex', gap:8}}>
+              {[{k:'cash',label:'💵 Cash'},{k:'card',label:'💳 Card'}].map(({k,label}) => (
+                <OptionBtn key={k} selected={form.payment_type===k} onClick={()=>set('payment_type',k)}>{label}</OptionBtn>
+              ))}
+            </div>
+            <div style={{fontSize:11, color:'#94A3B8', marginTop:4}}>
+              Cash: ${(RATES_CASH[form.movers_count]??169)}/hr · Card: ${(RATES_CARD[form.movers_count]??199)}/hr
+            </div>
+          </div>
+          <div>
+            <label style={lbl}>Travel Fee</label>
+            <div style={{display:'flex', gap:8}}>
+              {TRAVEL_OPTIONS.map(fee => (
+                <OptionBtn key={fee} selected={form.travel_fee===fee} onClick={()=>set('travel_fee',fee)}>${fee}</OptionBtn>
               ))}
             </div>
           </div>
