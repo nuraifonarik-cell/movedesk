@@ -21,7 +21,7 @@ const HEAVY_ITEMS = ['Piano','Treadmill','Safe','Pool table','Large appliance','
 const RATES_CASH = { 2:126, 3:169, 4:215 }
 const RATES_CARD = { 2:146, 3:199, 4:246 }
 const TRAVEL_OPTIONS = [125, 160]
-const MIN_HOURS = 3
+const MIN_HOURS = 2
 const DEPOSIT = 50
 
 function calcPrice(form) {

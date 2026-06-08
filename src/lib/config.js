@@ -26,7 +26,7 @@ export const RATES = {
 
 export const FEES = {
   travel_options:    [125, 160],
-  min_hours:         3,
+  min_hours:         2,
   deposit:           50,
   square_fee_pct:    2.6,
 }
