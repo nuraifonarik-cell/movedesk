@@ -283,6 +283,8 @@ export default function ContractPage() {
           laborTotal, packTotal, heavyTotal,
           travelFee, deposit,
           totalCost, balanceDue,
+          jobId: id ?? '',
+          customerEmail: job.customer?.email ?? '',
         }
         const { subject, html } = emailContractComplete(contractData)
 

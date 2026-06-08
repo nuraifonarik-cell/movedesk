@@ -11,6 +11,10 @@ export const COMPANY = {
   address: 'Seattle, WA',
 }
 
+// Update GOOGLE_REVIEW_URL once Google Business Profile is verified
+export const GOOGLE_REVIEW_URL = 'https://g.page/movego'
+export const FEEDBACK_FORM_URL = 'https://www.movegowa.com/feedback'
+
 // Hourly rates — UPDATE when confirmed with partners
 export const RATES = {
   '2_movers_cash':   120,
