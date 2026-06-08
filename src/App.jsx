@@ -19,6 +19,7 @@ import CrewAppPage         from './pages/CrewAppPage'
 import BookingPage         from './pages/BookingPage'
 import StatsPage           from './pages/StatsPage'
 import UsersPage           from './pages/UsersPage'
+import SetPasswordPage     from './pages/SetPasswordPage'
 
 // null=loading | 'admin' | 'dispatcher' | 'crew' | 'denied'
 export const RoleContext = createContext(null)
@@ -99,6 +100,15 @@ function ProtectedRoute({ children, adminOnly = false }) {
 function AppRoutes() {
   const { user, loading, signOut } = useAuth()
   const role = useUserRole()
+
+  // Detect invite / password-reset flow from URL hash or query params
+  const isInviteOrReset = typeof window !== 'undefined' && (
+    window.location.hash.includes('type=invite') ||
+    window.location.hash.includes('type=recovery') ||
+    new URLSearchParams(window.location.search).get('type') === 'invite' ||
+    new URLSearchParams(window.location.search).get('type') === 'recovery'
+  )
+  if (isInviteOrReset) return <SetPasswordPage />
 
   if (loading || (user && role === null))
     return <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',color:'#94A3B8',fontSize:14}}>Loading...</div>
