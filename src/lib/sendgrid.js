@@ -29,27 +29,6 @@ function tableRows(rows, borderColor = '#E2E8F0', labelColor = '#64748B') {
     </table>`
 }
 
-// ── Star rating block for emails ──────────────────────────────────────────
-function starRatingHtml({ jobId = '', name = '', email = '', googleUrl = 'https://g.page/movego', feedbackUrl = 'https://www.movegowa.com/feedback' }) {
-  const base = `${feedbackUrl}?job=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
-  const stars = [1, 2, 3, 4, 5].map(n => {
-    const href = n >= 4 ? googleUrl : `${base}&rating=${n}`
-    return `<td align="center" style="padding:0 6px;">
-      <a href="${href}" style="display:block;text-decoration:none;">
-        <div style="font-size:30px;color:#F59E0B;line-height:1;">★</div>
-        <div style="font-size:11px;color:#92400E;margin-top:3px;">${n}</div>
-      </a>
-    </td>`
-  }).join('')
-  return `
-    <div style="background:#FFF7ED;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;border:1px solid #FDE68A;">
-      <p style="font-size:15px;font-weight:700;color:#92400E;margin:0 0 4px;">How was your move?</p>
-      <p style="font-size:13px;color:#B45309;margin:0 0 14px;">Tap a star to rate us:</p>
-      <table align="center" cellpadding="0" cellspacing="0"><tr>${stars}</tr></table>
-      <p style="font-size:11px;color:#D97706;margin:12px 0 0;">4-5 stars → Google Review &nbsp;|&nbsp; 1-3 stars → send us your feedback</p>
-    </div>`
-}
-
 // ── Templates ─────────────────────────────────────────────────────────────
 
 export function emailJobConfirmation({ customerName, moveDate, fromAddress, toAddress, moversCount, blNumber }) {
@@ -199,7 +178,6 @@ export function emailJobComplete({ customerName, total, balance, blNumber, jobId
             </table>
           </div>
 
-          ${starRatingHtml({ jobId, name: customerName, email: customerEmail })}
         </td></tr>
 
         <tr><td style="background:#F8FAFF;padding:20px 32px;text-align:center;border-top:1px solid #E2E8F0;">
@@ -281,7 +259,6 @@ export function emailContractComplete({ customerName, blNumber, moveDate, fromAd
             ✓ This contract was digitally signed. The PDF copy is attached to this email.
           </p>
 
-          ${starRatingHtml({ jobId, name: customerName, email: customerEmail })}
         </td></tr>
 
         <tr><td style="background:#F8FAFF;padding:20px 32px;text-align:center;border-top:1px solid #E2E8F0;">
