@@ -23,7 +23,7 @@ export default function UsersPage() {
   const [showAdd,  setShowAdd]  = useState(false)
   const [error,    setError]    = useState('')
   const [saving,   setSaving]   = useState(false)
-  const [form,     setForm]     = useState({ email:'', full_name:'', role:'crew', crew_role:'helper' })
+  const [form,     setForm]     = useState({ email:'', full_name:'', password:'', role:'crew', crew_role:'helper' })
 
   const call = async (body) => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -47,11 +47,12 @@ export default function UsersPage() {
 
   const addUser = async () => {
     if (!form.email) { setError('Email is required'); return }
+    if (form.role === 'crew' && form.password.length < 6) { setError('Password must be at least 6 characters'); return }
     setSaving(true); setError('')
     try {
       await call({ action: 'create', ...form })
       setShowAdd(false)
-      setForm({ email:'', full_name:'', role:'crew', crew_role:'helper' })
+      setForm({ email:'', full_name:'', password:'', role:'crew', crew_role:'helper' })
       await load()
     } catch (e) { setError(e?.message ?? 'Failed to create user') }
     finally { setSaving(false) }
@@ -181,10 +182,17 @@ export default function UsersPage() {
                 <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Email *</label>
                 <input type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="john@example.com" style={inp}/>
               </div>
-            </div>
-
-            <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'10px 12px', marginTop:12, fontSize:12, color:'#15803D' }}>
-              📧 An invite link will be sent to this email. The person sets their own password.
+              {form.role === 'crew' ? (
+                <div>
+                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Password * <span style={{ color:'#94A3B8', fontWeight:400 }}>(min 6 characters)</span></label>
+                  <input type="password" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Give them this password" style={inp}/>
+                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:4 }}>Tell the crew member their email + this password to log in</div>
+                </div>
+              ) : (
+                <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#15803D' }}>
+                  📧 An invite link will be sent to this email. They set their own password.
+                </div>
+              )}
             </div>
 
             {error && <div style={{ background:'#FEF2F2', color:'#DC2626', fontSize:12, padding:'10px 12px', borderRadius:10, marginTop:12 }}>{error}</div>}
