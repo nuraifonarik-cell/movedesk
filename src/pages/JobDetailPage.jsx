@@ -246,6 +246,9 @@ export default function JobDetailPage() {
         if (roleType === 'foreman' && newStatus === 'new') {
           await supabase.from('jobs').update({ status:'scheduled' }).eq('id', id)
           newStatus = 'scheduled'
+          // Notify foreman by email (fire and forget)
+          supabase.functions.invoke('notify-crew', { body: { job_id: id, crew_member_id: memberId } })
+            .catch(e => console.error('notify-crew foreman:', e))
         }
       }
 
@@ -287,6 +290,9 @@ export default function JobDetailPage() {
           .insert({ job_id: id, crew_member_id: memberId })
           .select('id, crew_member_id').single()
         if (newRow) assignments = [...assignments, newRow]
+        // Notify helper by email (fire and forget)
+        supabase.functions.invoke('notify-crew', { body: { job_id: id, crew_member_id: memberId } })
+          .catch(e => console.error('notify-crew helper:', e))
       }
 
       return { assignments }
