@@ -185,7 +185,7 @@ export default function UsersPage() {
               {form.role === 'crew' ? (
                 <div>
                   <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Password * <span style={{ color:'#94A3B8', fontWeight:400 }}>(min 6 characters)</span></label>
-                  <input type="password" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Give them this password" style={inp}/>
+                  <input type="text" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Give them this password" style={inp}/>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:4 }}>Tell the crew member their email + this password to log in</div>
                 </div>
               ) : (
