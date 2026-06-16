@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Phone, Plus, X, UserCheck, HardHat, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { Phone, Plus, X, UserCheck, HardHat, Search, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 
 const ROLES = [
@@ -25,6 +25,10 @@ export default function CrewPage() {
   const [form, setForm]         = useState({ full_name:'', phone:'', email:'', password:'', role_type:'helper' })
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState('')
+  const [editMember, setEditMember] = useState(null)
+  const [editForm, setEditForm]     = useState({ full_name:'', phone:'' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError]   = useState('')
 
   const load = async () => {
     // Load crew
@@ -85,6 +89,25 @@ export default function CrewPage() {
       setError(e?.message ?? 'Failed to create crew member')
     }
     setSaving(false)
+  }
+
+  const openEdit = (m) => {
+    setEditMember(m)
+    setEditForm({ full_name: m.full_name ?? '', phone: m.phone ?? '' })
+    setEditError('')
+  }
+
+  const saveMember = async () => {
+    if (!editForm.full_name) { setEditError('Full name is required'); return }
+    setEditSaving(true); setEditError('')
+    const { error: e } = await supabase
+      .from('crew_members')
+      .update({ full_name: editForm.full_name, phone: editForm.phone || null })
+      .eq('id', editMember.id)
+    setEditSaving(false)
+    if (e) { setEditError(e.message); return }
+    setEditMember(null)
+    load()
   }
 
   const deactivate = async (id, name) => {
@@ -222,6 +245,11 @@ export default function CrewPage() {
                                   <Phone size={14} color={role.color}/>
                                 </a>
                               )}
+                              <button onClick={() => openEdit(m)}
+                                style={{ width:34, height:34, borderRadius:10, background:'#F8FAFF', border:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}
+                                title="Edit">
+                                <Pencil size={14} color="#64748B"/>
+                              </button>
                               <button onClick={() => deactivate(m.id, m.full_name)}
                                 style={{ width:34, height:34, borderRadius:10, background:'#FEF2F2', border:'1px solid #FECACA', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}
                                 title="Remove from crew">
@@ -237,6 +265,50 @@ export default function CrewPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Edit Member Modal */}
+      {editMember && (
+        <div style={{ position:'fixed', inset:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.5)' }}>
+          <div style={{ background:'white', borderRadius:20, padding:28, width:'100%', maxWidth:400, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+              <h2 style={{ fontSize:17, fontWeight:800, color:'#0F172A', margin:0 }}>Edit Crew Member</h2>
+              <button onClick={() => setEditMember(null)}
+                style={{ background:'#F1F5F9', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <X size={15}/>
+              </button>
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:6 }}>Full Name *</label>
+                <input value={editForm.full_name} onChange={e => setEditForm(f => ({...f, full_name: e.target.value}))} style={inp}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:6 }}>Phone</label>
+                <input type="tel" value={editForm.phone} onChange={e => setEditForm(f => ({...f, phone: e.target.value}))} placeholder="(917) 555-0100" style={inp}/>
+              </div>
+              <div style={{ fontSize:12, color:'#94A3B8', background:'#F8FAFF', border:'1px solid #E2E8F0', borderRadius:10, padding:'10px 12px' }}>
+                Email: {editMember.email ?? '—'}
+              </div>
+
+              {editError && (
+                <div style={{ background:'#FEF2F2', color:'#DC2626', fontSize:12, padding:'10px 12px', borderRadius:10 }}>{editError}</div>
+              )}
+
+              <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                <button onClick={() => setEditMember(null)}
+                  style={{ flex:1, padding:'12px', borderRadius:12, border:'1px solid #E2E8F0', background:'white', fontSize:14, fontWeight:600, cursor:'pointer', color:'#374151' }}>
+                  Cancel
+                </button>
+                <button onClick={saveMember} disabled={editSaving}
+                  style={{ flex:2, padding:'12px', borderRadius:12, border:'none', background:editSaving?'#94A3B8':'linear-gradient(135deg,#1D4ED8,#6366F1)', color:'white', fontSize:14, fontWeight:700, cursor:editSaving?'not-allowed':'pointer' }}>
+                  {editSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
