@@ -23,7 +23,7 @@ export default function UsersPage() {
   const [showAdd,  setShowAdd]  = useState(false)
   const [error,    setError]    = useState('')
   const [saving,   setSaving]   = useState(false)
-  const [form,     setForm]     = useState({ email:'', full_name:'', password:'', role:'crew', crew_role:'helper' })
+  const [form,     setForm]     = useState({ email:'', full_name:'', role:'dispatcher' })
 
   const call = async (body) => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -47,12 +47,11 @@ export default function UsersPage() {
 
   const addUser = async () => {
     if (!form.email) { setError('Email is required'); return }
-    if (form.role === 'crew' && form.password.length < 6) { setError('Password must be at least 6 characters'); return }
     setSaving(true); setError('')
     try {
       await call({ action: 'create', ...form })
       setShowAdd(false)
-      setForm({ email:'', full_name:'', password:'', role:'crew', crew_role:'helper' })
+      setForm({ email:'', full_name:'', role:'dispatcher' })
       await load()
     } catch (e) { setError(e?.message ?? 'Failed to create user') }
     finally { setSaving(false) }
@@ -80,9 +79,8 @@ export default function UsersPage() {
     } catch (e) { alert('Failed to delete user: ' + (e?.message ?? '')) }
   }
 
-  const managers = users.filter(u => !u.crew && (u.profile_role === 'admin' || u.profile_role === 'dispatcher'))
-  const crew     = users.filter(u => u.crew)
-  const others   = users.filter(u => !u.crew && u.profile_role !== 'admin' && u.profile_role !== 'dispatcher')
+  const managers = users.filter(u => u.profile_role === 'admin' || u.profile_role === 'dispatcher')
+  const others   = users.filter(u => u.profile_role !== 'admin' && u.profile_role !== 'dispatcher')
 
   return (
     <div style={{ padding:20, fontFamily:"'Inter',system-ui,sans-serif", maxWidth:900 }}>
@@ -115,12 +113,6 @@ export default function UsersPage() {
             {managers.length === 0 && <Empty text="No managers yet" />}
           </Section>
 
-          {/* Crew */}
-          <Section title="Crew Members" count={crew.length} color="#D97706">
-            {crew.map(u => <UserRow key={u.id} u={u} onToggleCrew={toggleCrew} onDelete={deleteUser} />)}
-            {crew.length === 0 && <Empty text="No crew members yet" />}
-          </Section>
-
           {/* No Access */}
           {others.length > 0 && (
             <Section title="No Access" count={others.length} color="#94A3B8">
@@ -142,9 +134,8 @@ export default function UsersPage() {
             {/* Role selector */}
             <div style={{ marginBottom:16 }}>
               <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:8 }}>Role</label>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                 {[
-                  { key:'crew',       label:'Crew',    icon:'👷', desc:'Crew App only' },
                   { key:'dispatcher', label:'Manager', icon:'💼', desc:'CRM access' },
                   { key:'admin',      label:'Owner',   icon:'👑', desc:'Full access' },
                 ].map(r => (
@@ -158,21 +149,6 @@ export default function UsersPage() {
               </div>
             </div>
 
-            {/* Crew sub-role */}
-            {form.role === 'crew' && (
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:8 }}>Crew Role</label>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                  {[{ key:'foreman', label:'Foreman' }, { key:'helper', label:'Helper' }].map(r => (
-                    <button key={r.key} onClick={() => set('crew_role', r.key)}
-                      style={{ padding:'10px', borderRadius:10, border:`2px solid ${form.crew_role===r.key?'#D97706':'#E2E8F0'}`, background:form.crew_role===r.key?'#FFFBEB':'white', cursor:'pointer', fontSize:13, fontWeight:700, color:form.crew_role===r.key?'#D97706':'#374151' }}>
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               <div>
                 <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Full Name</label>
@@ -182,17 +158,9 @@ export default function UsersPage() {
                 <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Email *</label>
                 <input type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="john@example.com" style={inp}/>
               </div>
-              {form.role === 'crew' ? (
-                <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Password * <span style={{ color:'#94A3B8', fontWeight:400 }}>(min 6 characters)</span></label>
-                  <input type="text" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Give them this password" style={inp}/>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:4 }}>Tell the crew member their email + this password to log in</div>
-                </div>
-              ) : (
-                <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#15803D' }}>
-                  📧 An invite link will be sent to this email. They set their own password.
-                </div>
-              )}
+              <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#15803D' }}>
+                📧 An invite link will be sent to this email. They set their own password.
+              </div>
             </div>
 
             {error && <div style={{ background:'#FEF2F2', color:'#DC2626', fontSize:12, padding:'10px 12px', borderRadius:10, marginTop:12 }}>{error}</div>}

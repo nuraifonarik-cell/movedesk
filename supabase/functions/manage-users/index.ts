@@ -31,12 +31,17 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
   const { data: profile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return new Response(JSON.stringify({ error: 'Forbidden' }), {
-    status: 403, headers: { ...CORS, 'Content-Type': 'application/json' },
-  })
 
   const body = await req.json()
   const { action } = body
+
+  // Admin can do everything; dispatcher can only create crew
+  const isAdmin = profile?.role === 'admin'
+  const isDispatcher = profile?.role === 'dispatcher'
+  const allowed = isAdmin || (isDispatcher && action === 'create' && body.role === 'crew')
+  if (!allowed) return new Response(JSON.stringify({ error: 'Forbidden' }), {
+    status: 403, headers: { ...CORS, 'Content-Type': 'application/json' },
+  })
 
   // ── LIST ──────────────────────────────────────────────────────────────────
   if (action === 'list') {
@@ -65,7 +70,7 @@ serve(async (req) => {
 
   // ── CREATE USER ──────────────────────────────────────────────────────────
   if (action === 'create') {
-    const { email, role, full_name, crew_role, password } = body
+    const { email, role, full_name, crew_role, password, phone } = body
 
     if (!email) return new Response(JSON.stringify({ error: 'Email is required' }), {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -87,15 +92,18 @@ serve(async (req) => {
       uid = newUser.user.id
       await new Promise(r => setTimeout(r, 500))
       await supabaseAdmin.from('profiles').upsert({ id: uid, role: 'pending' })
+      // Remove any existing crew_members entry for this email before inserting
+      await supabaseAdmin.from('crew_members').delete().eq('email', email)
       await supabaseAdmin.from('crew_members').insert({
         email,
         full_name: full_name || email,
+        phone:     phone || null,
         role:      crew_role === 'foreman' ? 'lead' : 'mover',
         role_type: crew_role || 'helper',
         is_active: true,
       })
 
-      // Send welcome email with login credentials
+      // Send welcome email with login credentials (fire and forget)
       const SENDGRID_KEY = Deno.env.get('SENDGRID_API_KEY')
       const FROM = Deno.env.get('SENDGRID_FROM') || 'info@movegowa.com'
       const CREW_APP_URL = 'https://movedesk-production.up.railway.app/crew-app'

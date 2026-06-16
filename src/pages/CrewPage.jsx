@@ -22,7 +22,7 @@ export default function CrewPage() {
   const [search, setSearch]     = useState('')
   const [showAdd, setShowAdd]   = useState(false)
   const [collapsed, setCollapsed] = useState({})
-  const [form, setForm]         = useState({ full_name:'', phone:'', email:'', role_type:'helper' })
+  const [form, setForm]         = useState({ full_name:'', phone:'', email:'', password:'', role_type:'helper' })
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState('')
 
@@ -60,19 +60,29 @@ export default function CrewPage() {
   const set = (k,v) => setForm(f => ({...f,[k]:v}))
 
   const addMember = async () => {
-    if (!form.full_name || !form.phone) { setError('Name and phone required'); return }
+    if (!form.full_name)              { setError('Full name is required'); return }
+    if (!form.phone)                  { setError('Phone is required'); return }
+    if (!form.email)                  { setError('Email is required'); return }
+    if (form.password.length < 6)     { setError('Password must be at least 6 characters'); return }
     setSaving(true); setError('')
-    const { error: err } = await supabase.from('crew_members').insert({
-      full_name: form.full_name, phone: form.phone,
-      email: form.email || null,
-      role: form.role_type==='foreman' ? 'lead' : 'mover',
-      role_type: form.role_type, is_active: true
-    })
-    if (err) setError(err.message)
-    else {
+    try {
+      const { error: fnErr } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action:    'create',
+          role:      'crew',
+          crew_role: form.role_type,
+          full_name: form.full_name,
+          phone:     form.phone,
+          email:     form.email,
+          password:  form.password,
+        },
+      })
+      if (fnErr) throw fnErr
       setShowAdd(false)
-      setForm({ full_name:'', phone:'', email:'', role_type:'helper' })
+      setForm({ full_name:'', phone:'', email:'', password:'', role_type:'helper' })
       load()
+    } catch (e) {
+      setError(e?.message ?? 'Failed to create crew member')
     }
     setSaving(false)
   }
@@ -266,10 +276,15 @@ export default function CrewPage() {
                 <input type="tel" value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="(917) 555-0100" style={inp}/>
               </div>
               <div>
+                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:6 }}>Email *</label>
+                <input type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="mike@example.com" style={inp}/>
+              </div>
+              <div>
                 <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:6 }}>
-                  Email <span style={{ color:'#94A3B8', fontWeight:400 }}>(for crew app login)</span>
+                  Password * <span style={{ color:'#94A3B8', fontWeight:400 }}>(min 6 characters)</span>
                 </label>
-                <input type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="mike@movego.com" style={inp}/>
+                <input type="text" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Give them this password" style={inp}/>
+                <div style={{ fontSize:11, color:'#94A3B8', marginTop:4 }}>Tell the crew member their email + this password to log in</div>
               </div>
 
               {error && (
