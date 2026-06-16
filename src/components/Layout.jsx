@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRole } from '../App'
-import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2, UserCog } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2, UserCog, KeyRound } from 'lucide-react'
 
 const baseNav = [
   { to: '/',          icon: LayoutDashboard, label: 'Dashboard',   group: 'main' },
@@ -23,6 +24,23 @@ export default function Layout({ children }) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const [open, setOpen] = useState(false)
+  const [pwModal, setPwModal] = useState(false)
+  const [pw, setPw]           = useState('')
+  const [pw2, setPw2]         = useState('')
+  const [pwErr, setPwErr]     = useState('')
+  const [pwOk, setPwOk]       = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+
+  const changePassword = async () => {
+    if (pw.length < 6) { setPwErr('Min 6 characters'); return }
+    if (pw !== pw2)    { setPwErr('Passwords do not match'); return }
+    setPwSaving(true); setPwErr('')
+    const { error } = await supabase.auth.updateUser({ password: pw })
+    setPwSaving(false)
+    if (error) { setPwErr(error.message); return }
+    setPwOk(true)
+    setTimeout(() => { setPwModal(false); setPw(''); setPw2(''); setPwOk(false) }, 2000)
+  }
 
   const nav = role === 'admin' ? [...baseNav, ...adminNav] : baseNav
 
@@ -86,6 +104,12 @@ export default function Layout({ children }) {
           </div>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{user?.email}</span>
         </div>
+        <button onClick={() => { setPwModal(true); setPwErr(''); setPw(''); setPw2(''); setPwOk(false) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 10px', borderRadius: 9, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'left', transition: 'all 0.15s', marginBottom: 2 }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.12)'; e.currentTarget.style.color = '#818CF8' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'rgba(255,255,255,0.3)' }}>
+          <KeyRound size={13} /> Change Password
+        </button>
         <button onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 10px', borderRadius: 9, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'left', transition: 'all 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; e.currentTarget.style.color = '#F87171' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'rgba(255,255,255,0.3)' }}>
@@ -159,6 +183,47 @@ export default function Layout({ children }) {
         @media (max-width: 768px) { .hidden-mobile { display: none !important; } .show-mobile { display: flex !important; } }
         * { -webkit-font-smoothing: antialiased; }
       `}</style>
+
+      {/* Change Password Modal */}
+      {pwModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', padding:16 }}>
+          <div style={{ background:'white', borderRadius:20, padding:28, width:'100%', maxWidth:380, boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+              <h2 style={{ fontSize:16, fontWeight:800, color:'#0F172A', margin:0 }}>Change Password</h2>
+              <button onClick={() => setPwModal(false)} style={{ background:'#F1F5F9', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <X size={14}/>
+              </button>
+            </div>
+            {pwOk ? (
+              <div style={{ textAlign:'center', padding:'20px 0' }}>
+                <div style={{ fontSize:36, marginBottom:10 }}>✅</div>
+                <p style={{ fontWeight:700, color:'#059669' }}>Password updated!</p>
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div>
+                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>New Password</label>
+                  <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="min 6 characters"
+                    style={{ width:'100%', border:'1.5px solid #E2E8F0', borderRadius:10, padding:'10px 12px', fontSize:14, outline:'none', background:'#F8FAFF', boxSizing:'border-box' }}/>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748B', marginBottom:5 }}>Confirm Password</label>
+                  <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="repeat password"
+                    style={{ width:'100%', border:'1.5px solid #E2E8F0', borderRadius:10, padding:'10px 12px', fontSize:14, outline:'none', background:'#F8FAFF', boxSizing:'border-box' }}/>
+                </div>
+                {pwErr && <div style={{ background:'#FEF2F2', color:'#DC2626', fontSize:12, padding:'8px 12px', borderRadius:8 }}>{pwErr}</div>}
+                <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                  <button onClick={() => setPwModal(false)} style={{ flex:1, padding:'11px', borderRadius:10, border:'1px solid #E2E8F0', background:'white', fontSize:13, fontWeight:600, cursor:'pointer', color:'#374151' }}>Cancel</button>
+                  <button onClick={changePassword} disabled={pwSaving}
+                    style={{ flex:2, padding:'11px', borderRadius:10, border:'none', background:pwSaving?'#94A3B8':'linear-gradient(135deg,#1D4ED8,#6366F1)', color:'white', fontSize:13, fontWeight:700, cursor:pwSaving?'not-allowed':'pointer' }}>
+                    {pwSaving ? 'Saving...' : 'Update Password'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
