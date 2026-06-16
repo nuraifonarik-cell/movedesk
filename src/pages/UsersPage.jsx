@@ -80,7 +80,7 @@ export default function UsersPage() {
   }
 
   const managers = users.filter(u => u.profile_role === 'admin' || u.profile_role === 'dispatcher')
-  const others   = users.filter(u => u.profile_role !== 'admin' && u.profile_role !== 'dispatcher')
+  const others   = users.filter(u => u.profile_role !== 'admin' && u.profile_role !== 'dispatcher' && !u.crew)
 
   return (
     <div style={{ padding:20, fontFamily:"'Inter',system-ui,sans-serif", maxWidth:900 }}>
