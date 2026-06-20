@@ -68,6 +68,8 @@ serve(async (req) => {
   const full_name    = contact.name  ?? String(body.full_name ?? '')
   const phone        = contact.phone ?? String(body.phone ?? '')
   const email        = contact.email ?? String(body.email ?? '')
+  const rawOptIn     = (body.contact as Record<string, unknown>)?.smsOptIn
+  const sms_opt_in   = rawOptIn === true || rawOptIn === 'true'
   const from_address = locations.from ?? String(body.from_address ?? '')
   const to_address   = locations.to   ?? String(body.to_address   ?? '')
   const move_date    = moveDate.date  ?? String(body.move_date ?? '')
@@ -103,7 +105,7 @@ serve(async (req) => {
 
   const { data: customer, error: custErr } = await supabase
     .from('customers')
-    .insert({ full_name, phone, email: email || null })
+    .insert({ full_name, phone, email: email || null, sms_opt_in })
     .select().single()
 
   if (custErr) {
@@ -140,6 +142,29 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Failed to create job' }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
+  }
+
+  // Send confirmation SMS to customer (if opted in)
+  if (sms_opt_in && phone) {
+    const ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')
+    const AUTH_TOKEN  = Deno.env.get('TWILIO_AUTH_TOKEN')
+    const FROM_PHONE  = Deno.env.get('TWILIO_PHONE')
+    if (ACCOUNT_SID && AUTH_TOKEN && FROM_PHONE) {
+      const toPhone = phone.startsWith('+') ? phone : '+1' + phone.replace(/\D/g, '')
+      const dateFormatted = new Date(move_date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
+      fetch(`https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${ACCOUNT_SID}:${AUTH_TOKEN}`),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          To:   toPhone,
+          From: FROM_PHONE,
+          Body: `Hi ${full_name.split(' ')[0]}! ✅ Move Go received your quote request for ${dateFormatted}. Our team will contact you shortly to confirm. Questions? Call (206) 567-1499. Reply STOP to unsubscribe.`,
+        }),
+      }).catch(e => console.error('SMS error:', e))
+    }
   }
 
   // Send confirmation email to customer
