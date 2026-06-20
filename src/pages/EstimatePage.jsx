@@ -74,7 +74,7 @@ export default function EstimatePage() {
     // Step 3
     heavy_items: [], packing_help: 'No packing help needed', packing_notes: '', notes: '',
     // Step 4
-    move_date: '', full_name: '', phone: '', email: '',
+    move_date: '', full_name: '', phone: '', email: '', sms_opt_in: true,
   })
 
   const set = (k, v) => setForm(f => ({...f, [k]: v}))
@@ -112,6 +112,7 @@ export default function EstimatePage() {
         full_name: form.full_name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim() || null,
+        sms_opt_in: form.sms_opt_in,
       })
       const noteParts = []
       if (form.heavy_items.length) noteParts.push('Heavy items: ' + form.heavy_items.join(', '))
@@ -148,9 +149,12 @@ export default function EstimatePage() {
         blNumber: job.bl_number ?? `BL-${job.id?.slice(0,6).toUpperCase()}`,
       }
 
-      // Send confirmation SMS
-      if (form.phone) {
-        sendSMS(form.phone, smsJobConfirmation(notifData)).catch(console.error)
+      // Send confirmation SMS (only if customer opted in)
+      if (form.sms_opt_in && form.phone) {
+        sendSMS(form.phone, smsJobConfirmation(notifData), {
+          customer_id: customer.id,
+          job_id: job.id,
+        }).catch(console.error)
       }
 
       // Send confirmation email
@@ -408,6 +412,19 @@ export default function EstimatePage() {
         <input type="email" value={form.email} onChange={e=>set('email',e.target.value)}
           placeholder="john@email.com" style={inp}/>
       </div>
+
+      <label style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', marginTop:4, padding:'12px 14px', background: form.sms_opt_in ? '#F0FDF4' : '#F8FAFF', border:`1.5px solid ${form.sms_opt_in ? '#86EFAC' : '#E2E8F0'}`, borderRadius:10, transition:'all 0.15s' }}>
+        <input type="checkbox" checked={form.sms_opt_in} onChange={e=>set('sms_opt_in', e.target.checked)}
+          style={{ width:16, height:16, marginTop:1, accentColor:'#059669', flexShrink:0, cursor:'pointer' }}/>
+        <div>
+          <div style={{ fontSize:13, fontWeight:600, color: form.sms_opt_in ? '#059669' : '#64748B' }}>
+            Send SMS confirmation to customer
+          </div>
+          <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
+            Customer will receive a text with job details. Requires phone number.
+          </div>
+        </div>
+      </label>
     </div>
   )
 

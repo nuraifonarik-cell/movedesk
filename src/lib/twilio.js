@@ -1,9 +1,9 @@
 import { supabase } from './supabase'
 
-export async function sendSMS(to, message) {
+export async function sendSMS(to, message, { customer_id, job_id } = {}) {
   try {
     const { data, error } = await supabase.functions.invoke('send-sms', {
-      body: { to, message },
+      body: { to, message, customer_id, job_id },
     })
     if (error) {
       console.error('SMS error:', error)
