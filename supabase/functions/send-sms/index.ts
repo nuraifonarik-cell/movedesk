@@ -32,9 +32,9 @@ serve(async (req) => {
   }
 
   // Parse request body
-  let to: string, message: string
+  let to: string, message: string, customer_id: string | undefined, job_id: string | undefined
   try {
-    ;({ to, message } = await req.json())
+    ;({ to, message, customer_id, job_id } = await req.json())
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -79,6 +79,22 @@ serve(async (req) => {
       status: twilioRes.status, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   }
+
+  // Save outbound message to sms_messages
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+  supabaseAdmin.from('sms_messages').insert({
+    customer_id: customer_id ?? null,
+    job_id:      job_id ?? null,
+    direction:   'outbound',
+    from_phone:  FROM_PHONE,
+    to_phone:    toPhone,
+    body:        message,
+    twilio_sid:  result.sid,
+    read:        true,
+  }).then(() => {}).catch(e => console.error('save outbound sms:', e))
 
   return new Response(JSON.stringify({ sid: result.sid }), {
     headers: { ...CORS, 'Content-Type': 'application/json' },

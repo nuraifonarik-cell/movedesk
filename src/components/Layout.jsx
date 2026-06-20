@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRole } from '../App'
 import { supabase } from '../lib/supabase'
-import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2, UserCog, KeyRound } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, Calendar, HardHat, LogOut, Truck, Menu, X, BarChart2, UserCog, KeyRound, MessageSquare } from 'lucide-react'
 
 const baseNav = [
   { to: '/',          icon: LayoutDashboard, label: 'Dashboard',   group: 'main' },
@@ -12,6 +12,7 @@ const baseNav = [
   { to: '/calendar',  icon: Calendar,        label: 'Calendar',    group: 'manage' },
   { to: '/customers', icon: Users,           label: 'Customers',   group: 'manage' },
   { to: '/crew',      icon: HardHat,         label: 'Crew',        group: 'manage' },
+  { to: '/messages',  icon: MessageSquare,   label: 'Messages',    group: 'manage' },
 ]
 const adminNav = [
   { to: '/stats', icon: BarChart2, label: 'Analytics', group: 'manage' },
@@ -24,6 +25,24 @@ export default function Layout({ children }) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const [open, setOpen] = useState(false)
+  const [unreadSms, setUnreadSms] = useState(0)
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('sms_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('direction', 'inbound')
+        .eq('read', false)
+      setUnreadSms(count ?? 0)
+    }
+    fetchUnread()
+    const channel = supabase
+      .channel('layout_sms_unread')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sms_messages' }, () => fetchUnread())
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
   const [pwModal, setPwModal] = useState(false)
   const [pw, setPw]           = useState('')
   const [pw2, setPw2]         = useState('')
@@ -85,10 +104,20 @@ export default function Layout({ children }) {
                     transition: 'all 0.15s'
                   }}
                 >
-                  <div style={{ width: 26, height: 26, borderRadius: 7, background: active ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ position: 'relative', width: 26, height: 26, borderRadius: 7, background: active ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Icon size={13} />
+                    {to === '/messages' && unreadSms > 0 && (
+                      <span style={{ position: 'absolute', top: -4, right: -4, background: '#EF4444', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                        {unreadSms > 9 ? '9+' : unreadSms}
+                      </span>
+                    )}
                   </div>
                   {label}
+                  {to === '/messages' && unreadSms > 0 && !active && (
+                    <span style={{ marginLeft: 'auto', background: '#EF4444', color: 'white', fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '1px 7px' }}>
+                      {unreadSms}
+                    </span>
+                  )}
                 </NavLink>
               )
             })}
