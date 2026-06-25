@@ -80,22 +80,32 @@ serve(async (req) => {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
 
-    // Find or create auth user — handle "already registered" gracefully
+    // Try to create user; if email already exists, find and update instead
     let uid: string
-    const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
-    const existing = allUsers.find((u: any) => u.email === email)
+    const { data: createdUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      email, password, email_confirm: true,
+    })
 
-    if (existing) {
+    if (createErr) {
+      const isAlreadyExists = createErr.message?.toLowerCase().includes('already')
+      if (!isAlreadyExists) {
+        console.error('createUser error:', createErr.message)
+        return new Response(JSON.stringify({ error: createErr.message }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
+      // User exists — find their id and update password + confirm email
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+      const existing = users.find((u: any) => u.email === email)
+      if (!existing) {
+        return new Response(JSON.stringify({ error: 'Email is taken but account not found. Wait 1-2 minutes and try again.' }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
       uid = existing.id
       await supabaseAdmin.auth.admin.updateUserById(uid, { password, email_confirm: true })
     } else {
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        email, password, email_confirm: true,
-      })
-      if (createErr) return new Response(JSON.stringify({ error: createErr.message }), {
-        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-      uid = newUser.user.id
+      uid = createdUser.user.id
     }
 
     if (role === 'crew') {
