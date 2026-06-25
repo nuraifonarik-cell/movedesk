@@ -76,13 +76,19 @@ serve(async (req) => {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
 
-    let uid: string
+    if (!password || password.length < 6) return new Response(JSON.stringify({ error: 'Password must be at least 6 characters' }), {
+      status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
 
-    if (role === 'crew') {
-      // Crew: manager sets password directly — no invite email needed
-      if (!password || password.length < 6) return new Response(JSON.stringify({ error: 'Password must be at least 6 characters' }), {
-        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
+    // Find or create auth user — handle "already registered" gracefully
+    let uid: string
+    const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+    const existing = allUsers.find((u: any) => u.email === email)
+
+    if (existing) {
+      uid = existing.id
+      await supabaseAdmin.auth.admin.updateUserById(uid, { password, email_confirm: true })
+    } else {
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
         email, password, email_confirm: true,
       })
@@ -90,6 +96,9 @@ serve(async (req) => {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
       })
       uid = newUser.user.id
+    }
+
+    if (role === 'crew') {
       await new Promise(r => setTimeout(r, 500))
       await supabaseAdmin.from('profiles').upsert({ id: uid, role: 'pending' })
       // Remove any existing crew_members entry for this email before inserting
