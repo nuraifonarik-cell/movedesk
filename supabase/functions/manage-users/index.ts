@@ -178,20 +178,7 @@ serve(async (req) => {
         }).catch(e => console.error('Welcome email error:', e))
       }
     } else {
-      // Admin / Dispatcher: create with password directly, send welcome email via SendGrid
-      if (!password || password.length < 6) return new Response(JSON.stringify({ error: 'Password must be at least 6 characters' }), {
-        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        email, password, email_confirm: true,
-      })
-      if (createErr) {
-        console.error('createUser (manager) error:', createErr.message)
-        return new Response(JSON.stringify({ error: createErr.message }), {
-          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-        })
-      }
-      uid = newUser.user.id
+      // Admin / Dispatcher: uid already set above, just update profile
       await new Promise(r => setTimeout(r, 500))
       await supabaseAdmin.from('profiles').upsert({ id: uid, full_name: full_name || null, role })
 
