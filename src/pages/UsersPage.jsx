@@ -26,9 +26,15 @@ export default function UsersPage() {
   const [form,     setForm]     = useState({ email:'', full_name:'', role:'dispatcher' })
 
   const call = async (body) => {
-    const { data: { session } } = await supabase.auth.getSession()
     const res = await supabase.functions.invoke('manage-users', { body })
-    if (res.error) throw res.error
+    if (res.error) {
+      let message = res.error.message
+      try {
+        const ctx = await res.error.context?.json?.()
+        if (ctx?.error) message = ctx.error
+      } catch {}
+      throw new Error(message)
+    }
     return res.data
   }
 

@@ -161,9 +161,12 @@ serve(async (req) => {
     } else {
       // Admin / Dispatcher: send invite email — they set their own password
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
-      if (createErr) return new Response(JSON.stringify({ error: createErr.message }), {
-        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
+      if (createErr) {
+        console.error('inviteUserByEmail error:', createErr.message)
+        return new Response(JSON.stringify({ error: createErr.message }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
       uid = newUser.user.id
       await new Promise(r => setTimeout(r, 500))
       await supabaseAdmin.from('profiles').upsert({ id: uid, full_name: full_name || null, role })
